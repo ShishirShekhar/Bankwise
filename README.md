@@ -51,14 +51,19 @@ User
  ↓
 Next.js
  ↓
-Cloud Run
+Cloud Run / FastAPI
  ↓
 Gemini + Google ADK
  ↓
 Research / Calculation / Verification
  ↓
-Agent Search + Cloud SQL + Cloud Storage
+BigQuery catalogue + Firestore sessions
  ↓
 Decision Engine
  ↓
 Gemini Explanation
+```
+
+## Backend
+
+The Python FastAPI service is in [`backend/README.md`](backend/README.md). It reads curated product and source records from BigQuery and stores redacted decision-session state in Firestore. The catalogue starts empty until official product data and source metadata are curated.
