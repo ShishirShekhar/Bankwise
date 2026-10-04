@@ -1,69 +1,167 @@
-import Image from "next/image";
-
 export default function Home() {
   return (
-    <div className="flex flex-1 flex-col items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex w-full max-w-3xl flex-1 flex-col items-center justify-between bg-white px-16 py-32 sm:items-start dark:bg-black">
-        <Image
-          className="h-5 w-[100px] dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl leading-10 font-semibold tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+    <main className="min-h-screen bg-[#f7f8fc]">
+      <div className="flex min-h-screen flex-col lg:flex-row">
+
+        {/* Left side - BankWise branding */}
+        <section className="flex w-full flex-col justify-between bg-[#172554] px-8 py-10 text-white lg:w-1/2 lg:px-16 lg:py-14">
+
+          {/* Logo */}
+          <div>
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white text-xl font-bold text-[#172554]">
+                B
+              </div>
+
+              <span className="text-2xl font-semibold tracking-tight">
+                BankWise
+              </span>
+            </div>
+          </div>
+
+          {/* Main message */}
+          <div className="my-16 max-w-xl lg:my-0">
+            <p className="mb-4 text-sm font-medium uppercase tracking-[0.2em] text-blue-200">
+              Smarter financial decisions
+            </p>
+
+            <h1 className="text-4xl font-semibold leading-tight sm:text-5xl">
+              Make your money decisions with confidence.
+            </h1>
+
+            <p className="mt-6 max-w-lg text-lg leading-8 text-blue-100">
+              Compare financial products, understand the real returns,
+              and discover the trade-offs before you decide.
+            </p>
+
+            <div className="mt-8 flex flex-wrap gap-3">
+              <span className="rounded-full bg-white/10 px-4 py-2 text-sm">
+                Compare products
+              </span>
+
+              <span className="rounded-full bg-white/10 px-4 py-2 text-sm">
+                Understand returns
+              </span>
+
+              <span className="rounded-full bg-white/10 px-4 py-2 text-sm">
+                AI-powered insights
+              </span>
+            </div>
+          </div>
+
+          {/* Footer */}
+          <p className="text-sm text-blue-200">
+            BankWise • Your financial decision companion
           </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] md:w-[158px] dark:hover:bg-[#ccc]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="h-[14px] w-4 dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] md:w-[158px] dark:border-white/[.145] dark:hover:bg-[#1a1a1a]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
+        </section>
+
+
+        {/* Right side - Login */}
+        <section className="flex w-full items-center justify-center px-6 py-12 lg:w-1/2">
+
+          <div className="w-full max-w-md">
+
+            <div className="mb-8">
+              <h2 className="text-3xl font-semibold tracking-tight text-gray-900">
+                Welcome back
+              </h2>
+
+              <p className="mt-2 text-gray-500">
+                Sign in to continue to BankWise.
+              </p>
+            </div>
+
+
+            {/* Login form */}
+            <div className="space-y-5">
+
+              {/* Email */}
+              <div>
+                <label
+                  htmlFor="email"
+                  className="mb-2 block text-sm font-medium text-gray-700"
+                >
+                  Email address
+                </label>
+
+                <input
+                  id="email"
+                  type="email"
+                  placeholder="you@example.com"
+                  className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3.5 text-gray-900 outline-none transition focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
+                />
+              </div>
+
+
+              {/* Password */}
+              <div>
+                <div className="mb-2 flex items-center justify-between">
+                  <label
+                    htmlFor="password"
+                    className="block text-sm font-medium text-gray-700"
+                  >
+                    Password
+                  </label>
+
+                  <button
+                    type="button"
+                    className="text-sm font-medium text-blue-600 hover:text-blue-700"
+                  >
+                    Forgot password?
+                  </button>
+                </div>
+
+                <input
+                  id="password"
+                  type="password"
+                  placeholder="Enter your password"
+                  className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3.5 text-gray-900 outline-none transition focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
+                />
+              </div>
+
+
+              {/* Login button */}
+              <button
+                type="button"
+                className="w-full rounded-xl bg-[#172554] px-4 py-3.5 font-medium text-white transition hover:bg-[#1e3a8a]"
+              >
+                Sign in
+              </button>
+
+
+              {/* Divider */}
+              <div className="flex items-center gap-4 py-2">
+                <div className="h-px flex-1 bg-gray-200" />
+                <span className="text-sm text-gray-400">or</span>
+                <div className="h-px flex-1 bg-gray-200" />
+              </div>
+
+
+              {/* Sign up */}
+              <p className="text-center text-sm text-gray-500">
+                Don't have an account?{" "}
+                <button
+                  type="button"
+                  className="font-semibold text-blue-600 hover:text-blue-700"
+                >
+                  Create account
+                </button>
+              </p>
+
+            </div>
+
+
+            {/* Disclaimer */}
+            <p className="mt-10 text-center text-xs leading-5 text-gray-400">
+              BankWise provides information and comparisons to help you
+              understand financial products. Always review the official
+              product terms before making a financial decision.
+            </p>
+
+          </div>
+        </section>
+
+      </div>
+    </main>
   );
 }
