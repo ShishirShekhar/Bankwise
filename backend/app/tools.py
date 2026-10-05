@@ -1,8 +1,10 @@
 """ADK tools for requirement extraction, product research, verification, and calculation."""
 
 from app.calculators.fd import CalculationError, calculate_fd
+from app.domain.catalog import product_payload
+from app.domain.input import extract_requirements
+from app.domain.sources import freshness, rate_is_usable
 from app.repositories.bigquery import BigQueryRepository
-from app.services import extract_requirements, freshness, product_payload, rate_is_usable
 
 
 def extract_requirements_tool(query: str) -> dict:
@@ -14,7 +16,12 @@ def search_products_tool(amount: float, tenure_months: int) -> dict:
     """Find FD products for the requested amount and tenure, including source status."""
     catalog = BigQueryRepository()
     products = catalog.list_products(category="FD", status="ACTIVE")
-    return {"products": [product_payload(product, catalog, amount, tenure_months) for product in products]}
+    return {
+        "products": [
+            product_payload(product, catalog, amount, tenure_months)
+            for product in products
+        ]
+    }
 
 
 def verify_product_tool(product_id: str) -> dict:
@@ -24,10 +31,29 @@ def verify_product_tool(product_id: str) -> dict:
     if not product:
         return {"product_id": product_id, "status": "MISSING"}
     conflicts = catalog.get_conflicts(product_id)
-    return {"product_id": product_id, "status": "CONFLICT" if conflicts else "CHECKED",
-            "conflicts": [{"field": c["field_name"], "value_a": c["value_a"], "value_b": c["value_b"],
-                           "source_a": c["source_a"], "source_b": c["source_b"]} for c in conflicts],
-            "sources": [{"id": s["id"], "title": s["title"], "url": s["url"], "freshness": freshness(s)} for s in product["sources"]]}
+    return {
+        "product_id": product_id,
+        "status": "CONFLICT" if conflicts else "CHECKED",
+        "conflicts": [
+            {
+                "field": c["field_name"],
+                "value_a": c["value_a"],
+                "value_b": c["value_b"],
+                "source_a": c["source_a"],
+                "source_b": c["source_b"],
+            }
+            for c in conflicts
+        ],
+        "sources": [
+            {
+                "id": s["id"],
+                "title": s["title"],
+                "url": s["url"],
+                "freshness": freshness(s),
+            }
+            for s in product["sources"]
+        ],
+    }
 
 
 def calculate_fd_tool(product_id: str, principal: float, tenure_months: int) -> dict:
@@ -36,12 +62,26 @@ def calculate_fd_tool(product_id: str, principal: float, tenure_months: int) -> 
     product = catalog.get_product(product_id, category="FD", status="ACTIVE")
     if not product:
         return {"status": "MISSING", "product_id": product_id}
-    matches = [rate for rate in product["rates"]
-               if (rate.get("tenure_months") == tenure_months or (rate.get("tenure_months") is None
-                   and (rate.get("tenure_min_months") is None or tenure_months >= rate["tenure_min_months"])
-                   and (rate.get("tenure_max_months") is None or tenure_months <= rate["tenure_max_months"])))
-               and (rate.get("min_amount") is None or principal >= rate["min_amount"])
-               and (rate.get("max_amount") is None or principal <= rate["max_amount"])]
+    matches = [
+        rate
+        for rate in product["rates"]
+        if (
+            rate.get("tenure_months") == tenure_months
+            or (
+                rate.get("tenure_months") is None
+                and (
+                    rate.get("tenure_min_months") is None
+                    or tenure_months >= rate["tenure_min_months"]
+                )
+                and (
+                    rate.get("tenure_max_months") is None
+                    or tenure_months <= rate["tenure_max_months"]
+                )
+            )
+        )
+        and (rate.get("min_amount") is None or principal >= rate["min_amount"])
+        and (rate.get("max_amount") is None or principal <= rate["max_amount"])
+    ]
     if len(matches) != 1:
         return {"status": "UNAVAILABLE", "reason": "No unique eligible rate band"}
     rate = matches[0]
@@ -49,9 +89,20 @@ def calculate_fd_tool(product_id: str, principal: float, tenure_months: int) -> 
     if not usable:
         return {"status": "BLOCKED", "reason": reason}
     if rate.get("payout_type", "").upper() != "CUMULATIVE":
-        return {"status": "UNSUPPORTED", "reason": "Only cumulative payout is currently supported"}
+        return {
+            "status": "UNSUPPORTED",
+            "reason": "Only cumulative payout is currently supported",
+        }
     try:
-        return {"status": "CALCULATED", "product_id": product["id"],
-                "result": calculate_fd(principal, rate["rate"], tenure_months, rate.get("compounding_frequency"))}
+        return {
+            "status": "CALCULATED",
+            "product_id": product["id"],
+            "result": calculate_fd(
+                principal,
+                rate["rate"],
+                tenure_months,
+                rate.get("compounding_frequency"),
+            ),
+        }
     except CalculationError as exc:
         return {"status": "BLOCKED", "reason": str(exc)}
