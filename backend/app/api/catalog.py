@@ -1,5 +1,7 @@
 """Product discovery, comparison, and deterministic calculation routes."""
 
+from typing import Annotated
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.api.dependencies import get_catalog
@@ -15,10 +17,10 @@ router = APIRouter()
 
 @router.get("/api/products")
 def list_products(
+    catalog: Annotated[BigQueryRepository, Depends(get_catalog)],
     category: str = "FD",
     amount: float = Query(default=None, gt=0),
     tenure_months: int = Query(default=None, alias="tenureMonths", gt=0),
-    catalog: BigQueryRepository = Depends(get_catalog),
 ):
     products = catalog.list_products(category=category.upper())
     return {
@@ -30,7 +32,9 @@ def list_products(
 
 
 @router.get("/api/products/{product_id}")
-def get_product(product_id: str, catalog: BigQueryRepository = Depends(get_catalog)):
+def get_product(
+    product_id: str, catalog: Annotated[BigQueryRepository, Depends(get_catalog)]
+):
     product = catalog.get_product(product_id)
     if not product:
         raise HTTPException(404, "Product not found")
@@ -39,7 +43,7 @@ def get_product(product_id: str, catalog: BigQueryRepository = Depends(get_catal
 
 @router.get("/api/products/{product_id}/sources")
 def get_product_sources(
-    product_id: str, catalog: BigQueryRepository = Depends(get_catalog)
+    product_id: str, catalog: Annotated[BigQueryRepository, Depends(get_catalog)]
 ):
     product = catalog.get_product(product_id)
     if not product:
@@ -52,7 +56,8 @@ def get_product_sources(
 
 @router.post("/api/calculations/fd")
 def calculate_fd_endpoint(
-    request: FDCalculationRequest, catalog: BigQueryRepository = Depends(get_catalog)
+    request: FDCalculationRequest,
+    catalog: Annotated[BigQueryRepository, Depends(get_catalog)],
 ):
     if not request.product_id:
         raise HTTPException(
@@ -107,7 +112,8 @@ def calculate_fd_endpoint(
 
 @router.post("/api/compare")
 def compare_endpoint(
-    request: CompareRequest, catalog: BigQueryRepository = Depends(get_catalog)
+    request: CompareRequest,
+    catalog: Annotated[BigQueryRepository, Depends(get_catalog)],
 ):
     if (
         request.requirements.amount is None

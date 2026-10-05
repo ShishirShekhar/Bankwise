@@ -1,6 +1,6 @@
 """Focused service operations: sources."""
 
-from datetime import date, datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone
 
 from app.config import SOURCE_MAX_AGE_DAYS
 
@@ -25,7 +25,7 @@ def freshness(source: dict) -> str:
 def rate_is_usable(catalog, product_id: str, rate: dict) -> tuple:
     if rate.get("verification_status") != "HIGH":
         return False, "Rate is not verified at HIGH confidence"
-    today = date.today()
+    today = datetime.now(timezone.utc).date()
     if rate.get("effective_from") and rate["effective_from"] > today:
         return False, "Rate is not effective yet"
     if rate.get("effective_to") and rate["effective_to"] < today:

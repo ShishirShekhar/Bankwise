@@ -1,6 +1,7 @@
 """Health and source-verification routes."""
 
 from importlib.util import find_spec
+from typing import Annotated
 
 from fastapi import APIRouter, Depends
 
@@ -11,9 +12,9 @@ from app.config import (
     GEMINI_MODEL,
     GOOGLE_CLOUD_PROJECT,
 )
+from app.domain.sources import freshness, rate_is_usable
 from app.repositories.bigquery import BigQueryRepository
 from app.schemas import HealthResponse
-from app.domain.sources import freshness, rate_is_usable
 
 router = APIRouter()
 
@@ -24,7 +25,9 @@ def health():
 
 
 @router.post("/api/verification/run")
-def verification_run(catalog: BigQueryRepository = Depends(get_catalog)):
+def verification_run(
+    catalog: Annotated[BigQueryRepository, Depends(get_catalog)],
+):
     reports = []
     for product in catalog.list_products(category="FD", status="ACTIVE"):
         conflicts = catalog.get_conflicts(product["id"])

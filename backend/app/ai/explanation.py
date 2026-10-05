@@ -2,6 +2,7 @@ import json
 import re
 
 from google.genai import types
+from google.genai.errors import APIError
 
 from app.ai.extraction import Requirements, _get_client
 from app.config import GEMINI_MODEL
@@ -89,7 +90,7 @@ def _generate(facts: dict) -> str | None:
             config=types.GenerateContentConfig(system_instruction=SYSTEM_PROMPT, temperature=0.2),
         )
         return (response.text or "").strip() or None
-    except Exception:  # never let a Gemini failure break the response
+    except (APIError, RuntimeError, OSError):
         return None
 
 

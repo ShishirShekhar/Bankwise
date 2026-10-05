@@ -1,7 +1,6 @@
-from app.ai.tools import calculate_fd_maturity
-from app.ai.tools import calculate_early_withdrawal
-
 import pytest
+
+from app.ai.tools import calculate_early_withdrawal, calculate_fd_maturity
 
 
 def test_alpha_two_years():

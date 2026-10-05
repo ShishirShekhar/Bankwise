@@ -1,12 +1,11 @@
 """Focused service operations: catalog."""
 
-from typing import Optional
 
 from app.domain.sources import freshness, rate_is_usable
 
 
 def product_payload(
-    product: dict, catalog, amount: Optional[float] = None, tenure: Optional[int] = None
+    product: dict, catalog, amount: float | None = None, tenure: int | None = None
 ) -> dict:
     rates = []
     for rate in product.get("rates", []):
