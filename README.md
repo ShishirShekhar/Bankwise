@@ -51,14 +51,26 @@ User
  ↓
 Next.js
  ↓
-Cloud Run
+Cloud Run / FastAPI
  ↓
 Gemini + Google ADK
  ↓
 Research / Calculation / Verification
  ↓
-Agent Search + Cloud SQL + Cloud Storage
+BigQuery catalogue + Firestore sessions
  ↓
 Decision Engine
  ↓
 Gemini Explanation
+```
+
+## Backend
+
+The Python FastAPI service is in [`backend/README.md`](backend/README.md). It reads curated product and source records from BigQuery and stores redacted decision-session state in Firestore. The catalogue starts empty until official product data and source metadata are curated.
+
+## Continuous integration
+
+GitHub Actions runs `frontend-lint`, `frontend-build`, `backend-lint`, and
+`backend-test` for pull requests and pushes to `main`. To make these checks
+block merges, configure the repository's branch protection or ruleset for
+`main` and require all four status checks.
