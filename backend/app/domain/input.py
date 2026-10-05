@@ -6,13 +6,40 @@ from app.config import GEMINI_MODEL
 from app.schemas import Requirements
 
 
+_SENSITIVE_LABEL = re.compile(
+    r"\b(?:PAN|Aadhaar|account number|card number|CVV|UPI PIN|banking password)\b",
+    re.IGNORECASE,
+)
+_SENSITIVE_VALUE = re.compile(r"[A-Z0-9-]{4,}", re.IGNORECASE)
+
+
 def redact_sensitive_input(query: str) -> str:
     """Remove common credential/identity values before sending free text to a model."""
-    redacted = re.sub(
-        r"(?i)\b(?:PAN|Aadhaar|account number|card number|CVV|UPI PIN|banking password)\b\s*(?:is|:|=)?\s*[A-Z0-9-]{4,}",
-        "[REDACTED]",
-        query,
-    )
+    # Match labels separately, then scan whitespace and the optional delimiter once.
+    # This avoids ambiguous unbounded repetitions in a regex over user-controlled text.
+    parts = []
+    cursor = 0
+    for label in _SENSITIVE_LABEL.finditer(query):
+        value_start = label.end()
+        while value_start < len(query) and query[value_start].isspace():
+            value_start += 1
+        if query[value_start : value_start + 2].lower() == "is" and (
+            value_start + 2 == len(query) or not query[value_start + 2].isalnum()
+        ):
+            value_start += 2
+        elif value_start < len(query) and query[value_start] in ":=":
+            value_start += 1
+        while value_start < len(query) and query[value_start].isspace():
+            value_start += 1
+        value = _SENSITIVE_VALUE.match(query, value_start)
+        if value and value.end() - value.start() >= 4:
+            parts.extend((query[cursor : label.start()], "[REDACTED]"))
+            cursor = value.end()
+    if parts:
+        parts.append(query[cursor:])
+        redacted = "".join(parts)
+    else:
+        redacted = query
     redacted = re.sub(r"\b[A-Z]{5}[0-9]{4}[A-Z]\b", "[REDACTED]", redacted, flags=re.I)
     redacted = re.sub(r"(?<!\d)(?:\d[ -]?){11}\d(?!\d)", "[REDACTED]", redacted)
     redacted = re.sub(r"(?<!\d)(?:\d[ -]?){15}\d(?!\d)", "[REDACTED]", redacted)
