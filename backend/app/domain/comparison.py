@@ -44,7 +44,7 @@ def compare_products(catalog, product_ids: list, amount: float, tenure: int) -> 
                     amount, rate["rate"], tenure, rate.get("compounding_frequency")
                 )
             except ValueError:
-                reason = (
+                reason = "Calculation is unavailable for the selected inputs"
                     "Calculation could not be completed for the selected rate configuration."
                 )
         if ok and calculation is None:
