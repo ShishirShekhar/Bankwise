@@ -2,6 +2,17 @@
 
 FastAPI backend for source-grounded FD comparison. Financial calculations live in `app/calculators`, separate from Gemini and ADK. BigQuery is the catalogue and verification data store. Firestore stores redacted decision-session state; it does not store the raw user query.
 
+## Code layout
+
+- `app/main.py` creates the FastAPI application and registers route modules.
+- `app/api/` contains routers grouped by assistant, catalog/calculation, decision/session, and operational endpoints. Shared repository providers are in `api/dependencies.py`.
+- `app/domain/` contains requirement parsing, source verification, product shaping, comparison, and ID generation. It does not define HTTP routes.
+- `app/calculators/` contains deterministic financial calculations.
+- `app/ai/` contains Gemini extraction, the conversational pipeline, and AI tool operations.
+- `app/repositories/` contains BigQuery and Firestore access.
+
+`app/services.py` re-exports domain functions for older imports. New code should import directly from the relevant `app.domain` module.
+
 ## Local setup
 
 Requires Python 3.11 or newer, Google Cloud ADC credentials, and configured BigQuery/Firestore resources.
