@@ -4,6 +4,7 @@ from pydantic import BaseModel, Field
 
 from app.ai.extraction import Requirements, extract
 from app.ai.tools import DEMO_RATES, calculate_fd_maturity, calculate_early_withdrawal
+from app.ai.explanation import explain
 
 
 class Option(BaseModel):
@@ -25,6 +26,7 @@ class PipelineResult(BaseModel):
     options: list[Option] = Field(default_factory=list)
     skipped: list[Skipped] = Field(default_factory=list)
     best_if_withdrawn_early: str | None = None
+    explanation: str | None = None
 
 
 def default_months_held(duration_months: int) -> int:
@@ -111,4 +113,5 @@ def run(text: str) -> PipelineResult:
         options=options,
         skipped=skipped,
         best_if_withdrawn_early=best_early,
+        explanation=explain(req, options, best_early),
     )
