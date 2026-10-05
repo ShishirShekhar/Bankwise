@@ -45,8 +45,6 @@ def compare_products(catalog, product_ids: list, amount: float, tenure: int) -> 
                 )
             except ValueError:
                 reason = "Calculation is unavailable for the selected inputs"
-                    "Calculation could not be completed for the selected rate configuration."
-                )
         if ok and calculation is None:
             reason = "Only cumulative payout calculation is currently supported"
         results.append(
