@@ -11,6 +11,7 @@ _SENSITIVE_LABEL = re.compile(
     re.IGNORECASE,
 )
 _SENSITIVE_VALUE = re.compile(r"[A-Z0-9-]{4,}", re.IGNORECASE)
+_PAN_VALUE = re.compile(r"\b[A-Z]{5}[0-9]{4}[A-Z]\b", re.IGNORECASE)
 
 
 def redact_sensitive_input(query: str) -> str:
@@ -40,17 +41,44 @@ def redact_sensitive_input(query: str) -> str:
         redacted = "".join(parts)
     else:
         redacted = query
-    redacted = re.sub(r"\b[A-Z]{5}[0-9]{4}[A-Z]\b", "[REDACTED]", redacted, flags=re.I)
-    redacted = re.sub(r"(?<!\d)(?:\d[ -]?){11}\d(?!\d)", "[REDACTED]", redacted)
-    redacted = re.sub(r"(?<!\d)(?:\d[ -]?){15}\d(?!\d)", "[REDACTED]", redacted)
-    return redacted
+    redacted = _PAN_VALUE.sub("[REDACTED]", redacted)
+    return _redact_long_numbers(redacted)
+
+
+def _redact_long_numbers(text: str) -> str:
+    """Redact 12- or 16-digit values, scanning digits and separators linearly."""
+    parts = []
+    cursor = 0
+    index = 0
+    while index < len(text):
+        if not text[index].isdigit() or (index > 0 and text[index - 1].isdigit()):
+            index += 1
+            continue
+        start = index
+        end = index
+        digits = 0
+        while end < len(text) and text[end].isdigit():
+            digits += 1
+            end += 1
+            if end < len(text) and text[end] in " -" and end + 1 < len(text) and text[end + 1].isdigit():
+                end += 1
+        if digits in (12, 16) and (end == len(text) or not text[end].isdigit()):
+            parts.extend((text[cursor:start], "[REDACTED]"))
+            cursor = end
+            index = end
+        else:
+            index = max(end, index + 1)
+    if not parts:
+        return text
+    parts.append(text[cursor:])
+    return "".join(parts)
 
 
 def extract_requirements(query: str, use_gemini: bool = True) -> Requirements:
     """Use Gemini when configured; otherwise extract only values stated explicitly."""
     query = redact_sensitive_input(query)
     amount_match = re.search(
-        r"(?:₹|rs\.?\s*|inr\s*)([\d,]+(?:\.\d+)?)\s*(lakh|lac| lakhs|crore)?",
+        r"(?:₹|rs\.?\s*|inr\s*)([\d,]{1,24}(?:\.\d{1,4})?)\s*(lakh|lac| lakhs|crore)?",
         query,
         re.I,
     )
@@ -64,8 +92,8 @@ def extract_requirements(query: str, use_gemini: bool = True) -> Requirements:
             else 10000000 if scale == "crore" else 1
         )
     tenure = None
-    years = re.search(r"(\d+(?:\.\d+)?)\s*years?", query, re.I)
-    months = re.search(r"(\d+)\s*months?", query, re.I)
+    years = re.search(r"(\d{1,4}(?:\.\d{1,2})?)\s*years?", query, re.I)
+    months = re.search(r"(\d{1,4})\s*months?", query, re.I)
     if years:
         tenure = int(float(years.group(1)) * 12)
     elif months:
