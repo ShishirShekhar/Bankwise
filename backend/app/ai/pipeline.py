@@ -2,9 +2,9 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
-from app.ai.extraction import Requirements, extract
-from app.ai.tools import DEMO_RATES, calculate_fd_maturity, calculate_early_withdrawal
 from app.ai.explanation import explain
+from app.ai.extraction import Requirements, extract
+from app.ai.tools import DEMO_RATES, calculate_early_withdrawal, calculate_fd_maturity
 
 
 class Option(BaseModel):
@@ -19,6 +19,11 @@ class Option(BaseModel):
     early_exit_note: str | None = None
 
 
+class Skipped(BaseModel):
+    bank: str
+    reason: str
+
+
 class PipelineResult(BaseModel):
     status: Literal["OK", "NEEDS_CLARIFICATION", "UNSUPPORTED", "NO_MATCH"]
     message: str | None = None
@@ -31,11 +36,6 @@ class PipelineResult(BaseModel):
 
 def default_months_held(duration_months: int) -> int:
     return 12 if duration_months > 12 else max(1, duration_months // 2)
-
-
-class Skipped(BaseModel):
-    bank: str
-    reason: str
 
 
 def clarifying_question(missing: list[str]) -> str:

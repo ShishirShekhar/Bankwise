@@ -117,6 +117,6 @@ async def run_decision_agent(query: str, requirements: dict, decision_context: d
                     part.text for part in event.content.parts if part.text
                 )
         return "".join(response_text).strip() or None
-    except Exception:
+    except (ImportError, RuntimeError, OSError, ValueError):
         # The structured API result remains usable if ADK/model access is unavailable.
         return None

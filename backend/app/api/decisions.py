@@ -1,9 +1,12 @@
 """Decision and persisted-session routes."""
 
-from fastapi import APIRouter, Depends, HTTPException
+from typing import Annotated
 
-from app.api.dependencies import get_catalog, get_sessions
+from fastapi import APIRouter, Depends, HTTPException
+from google.api_core.exceptions import GoogleAPICallError
+
 from app.ai.orchestrator import run_decision_agent
+from app.api.dependencies import get_catalog, get_sessions
 from app.config import GOOGLE_CLOUD_PROJECT
 from app.domain.comparison import compare_products
 from app.domain.identifiers import new_id
@@ -18,8 +21,8 @@ router = APIRouter()
 @router.post("/api/decision")
 async def decision(
     request: DecisionRequest,
-    catalog: BigQueryRepository = Depends(get_catalog),
-    sessions: FirestoreSessionRepository = Depends(get_sessions),
+    catalog: Annotated[BigQueryRepository, Depends(get_catalog)],
+    sessions: Annotated[FirestoreSessionRepository, Depends(get_sessions)],
 ):
     safe_query = redact_sensitive_input(request.query)
     requirements = extract_requirements(safe_query)
@@ -34,7 +37,7 @@ async def decision(
                 requirements.missing_information,
             )
             session_persisted = True
-        except Exception:
+        except (GoogleAPICallError, ImportError, RuntimeError):
             session_persisted = False
         return {
             "request_id": request_id,
@@ -69,7 +72,7 @@ async def decision(
             session_id, requirements.model_dump(), result["products"]
         )
         session_persisted = True
-    except Exception:
+    except (GoogleAPICallError, ImportError, RuntimeError):
         session_persisted = False
         result["warnings"].append(
             "Decision completed, but Firestore session persistence was unavailable."
@@ -109,7 +112,8 @@ async def decision(
 
 @router.get("/api/sessions/{session_id}")
 def get_decision_session(
-    session_id: str, sessions: FirestoreSessionRepository = Depends(get_sessions)
+    session_id: str,
+    sessions: Annotated[FirestoreSessionRepository, Depends(get_sessions)],
 ):
     session = sessions.get(session_id)
     if not session:

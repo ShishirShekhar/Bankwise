@@ -1,7 +1,7 @@
 """Read-only BigQuery repository for curated catalogue and verification data."""
 
 import re
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from app.config import BIGQUERY_DATASET, BIGQUERY_LOCATION, BIGQUERY_PROJECT
 
@@ -27,8 +27,8 @@ class BigQueryRepository:
         self._product_cache = {}
 
     def _rows(
-        self, table: str, where: str = "", params: Optional[list] = None
-    ) -> List[Dict[str, Any]]:
+        self, table: str, where: str = "", params: list | None = None
+    ) -> list[dict[str, Any]]:
         from google.cloud import bigquery
 
         sql = f"SELECT * FROM {self.prefix}.{table}` {where}"
@@ -40,7 +40,7 @@ class BigQueryRepository:
             ).result()
         ]
 
-    def _one(self, table: str, identifier: str) -> Optional[Dict[str, Any]]:
+    def _one(self, table: str, identifier: str) -> dict[str, Any] | None:
         from google.cloud import bigquery
 
         sql = f"SELECT * FROM {self.prefix}.{table}` WHERE id = @id LIMIT 1"
@@ -56,7 +56,7 @@ class BigQueryRepository:
 
     def list_products(
         self, category: str = "FD", status: str = "ACTIVE"
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         from google.cloud import bigquery
 
         sql = (
@@ -83,9 +83,9 @@ class BigQueryRepository:
     def get_product(
         self,
         product_id: str,
-        category: Optional[str] = None,
-        status: Optional[str] = None,
-    ) -> Optional[Dict[str, Any]]:
+        category: str | None = None,
+        status: str | None = None,
+    ) -> dict[str, Any] | None:
         cached = self._product_cache.get(product_id)
         if cached is not None:
             if category is not None and cached.get("category") != category.upper():
@@ -123,13 +123,13 @@ class BigQueryRepository:
         self._product_cache[product_id] = product
         return product
 
-    def _hydrate(self, product: Dict[str, Any]) -> Dict[str, Any]:
+    def _hydrate(self, product: dict[str, Any]) -> dict[str, Any]:
         from google.cloud import bigquery
 
         product_id = product["id"]
         params = [bigquery.ScalarQueryParameter("product_id", "STRING", product_id)]
 
-        def related(table: str) -> List[Dict[str, Any]]:
+        def related(table: str) -> list[dict[str, Any]]:
             sql = f"SELECT * FROM {self.prefix}.{table}` WHERE product_id=@product_id"
             return [
                 dict(row.items())
@@ -152,14 +152,14 @@ class BigQueryRepository:
             self._source_cache[source["id"]] = source
         return product
 
-    def get_source(self, source_id: str) -> Optional[Dict[str, Any]]:
+    def get_source(self, source_id: str) -> dict[str, Any] | None:
         if source_id not in self._source_cache:
             self._source_cache[source_id] = self._one("sources", source_id)
         return self._source_cache[source_id]
 
     def get_conflicts(
-        self, product_id: str, field_name: Optional[str] = None, status: str = "OPEN"
-    ) -> List[Dict[str, Any]]:
+        self, product_id: str, field_name: str | None = None, status: str = "OPEN"
+    ) -> list[dict[str, Any]]:
         cache_key = (product_id, status)
         if cache_key in self._conflict_cache:
             conflicts = self._conflict_cache[cache_key]
@@ -191,7 +191,7 @@ class BigQueryRepository:
             if not field_name or conflict["field_name"] == field_name
         ]
 
-    def list_conflicts(self, status: str = "OPEN") -> List[Dict[str, Any]]:
+    def list_conflicts(self, status: str = "OPEN") -> list[dict[str, Any]]:
         from google.cloud import bigquery
 
         return self._rows(

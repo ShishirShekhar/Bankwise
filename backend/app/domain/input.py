@@ -2,9 +2,11 @@
 
 import re
 
+from google.genai.errors import APIError
+from pydantic import ValidationError
+
 from app.config import GEMINI_MODEL
 from app.schemas import Requirements
-
 
 _SENSITIVE_LABEL = re.compile(
     r"\b(?:PAN|Aadhaar|account number|card number|CVV|UPI PIN|banking password)\b",
@@ -80,7 +82,7 @@ def extract_requirements(query: str, use_gemini: bool = True) -> Requirements:
     amount_match = re.search(
         r"(?:₹|rs\.?\s*|inr\s*)([\d,]{1,24}(?:\.\d{1,4})?)\s*(lakh|lac| lakhs|crore)?",
         query,
-        re.I,
+        re.IGNORECASE,
     )
     amount = None
     if amount_match:
@@ -92,8 +94,8 @@ def extract_requirements(query: str, use_gemini: bool = True) -> Requirements:
             else 10000000 if scale == "crore" else 1
         )
     tenure = None
-    years = re.search(r"(\d{1,4}(?:\.\d{1,2})?)\s*years?", query, re.I)
-    months = re.search(r"(\d{1,4})\s*months?", query, re.I)
+    years = re.search(r"(\d{1,4}(?:\.\d{1,2})?)\s*years?", query, re.IGNORECASE)
+    months = re.search(r"(\d{1,4})\s*months?", query, re.IGNORECASE)
     if years:
         tenure = int(float(years.group(1)) * 12)
     elif months:
@@ -101,6 +103,7 @@ def extract_requirements(query: str, use_gemini: bool = True) -> Requirements:
     try:
         from google import genai
         from google.genai import types
+
         from app.config import GOOGLE_CLOUD_LOCATION, GOOGLE_CLOUD_PROJECT
 
         if use_gemini and GOOGLE_CLOUD_PROJECT:
@@ -130,7 +133,7 @@ def extract_requirements(query: str, use_gemini: bool = True) -> Requirements:
                 ["duration_months"] if tenure is None else []
             )
             return parsed
-    except Exception:
+    except (APIError, ImportError, RuntimeError, OSError, ValidationError, ValueError):
         # Keep local operation available when credentials or Vertex AI are unavailable.
         pass
     missing = []

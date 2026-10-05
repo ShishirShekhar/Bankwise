@@ -1,5 +1,4 @@
-from decimal import Decimal, ROUND_HALF_UP
-from typing import Optional
+from decimal import ROUND_HALF_UP, Decimal
 
 
 class CalculationError(ValueError):
@@ -10,7 +9,7 @@ def calculate_fd(
     principal: float,
     annual_rate: float,
     tenure_months: int,
-    compounding_frequency: Optional[int],
+    compounding_frequency: int | None,
 ) -> dict:
     """Calculate cumulative FD maturity using the explicitly supplied compounding rule.
 
@@ -26,9 +25,9 @@ def calculate_fd(
             "A sourced compounding frequency is required for cumulative calculation"
         )
     p = Decimal(str(principal))
-    rate = Decimal(str(annual_rate)) / Decimal("100")
+    rate = Decimal(str(annual_rate)) / Decimal(100)
     n = Decimal(compounding_frequency)
-    years = Decimal(tenure_months) / Decimal("12")
+    years = Decimal(tenure_months) / Decimal(12)
     # Decimal power requires an integer exponent, so use a high precision local context.
     from decimal import localcontext
 
