@@ -1,4 +1,4 @@
-export default function Dashboard() {
+export default function dashboard() {
   return (
     <main className="min-h-screen bg-[#f7f8fc] text-gray-900">
 
@@ -58,7 +58,7 @@ export default function Dashboard() {
           </h1>
 
           <p className="mx-auto mt-4 max-w-2xl text-lg leading-8 text-gray-500">
-            Tell BankWise what you want to achieve, and we'll help you
+            Tell BankWise what you want to achieve, and we&apos;ll help you
             compare financial products based on what actually matters to you.
           </p>
 
@@ -109,7 +109,7 @@ export default function Dashboard() {
             </h2>
 
             <p className="mt-2 text-sm text-gray-500">
-              Start with a financial product you're interested in.
+              Start with a financial product you&apos;re interested in.
             </p>
           </div>
 
@@ -220,7 +220,7 @@ export default function Dashboard() {
           </h2>
 
           <p className="mt-2 max-w-2xl text-blue-100">
-            We don't just show you a headline interest rate. We help you
+            We don&apos;t just show you a headline interest rate. We help you
             understand the actual trade-offs behind a financial product.
           </p>
 
