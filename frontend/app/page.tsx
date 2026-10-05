@@ -139,7 +139,7 @@ export default function Home() {
 
               {/* Sign up */}
               <p className="text-center text-sm text-gray-500">
-                Don't have an account?{" "}
+                Don&apos;t have an account?{" "}
                 <button
                   type="button"
                   className="font-semibold text-blue-600 hover:text-blue-700"
