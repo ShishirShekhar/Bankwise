@@ -18,4 +18,8 @@ FIRESTORE_DATABASE = setting("FIRESTORE_DATABASE", "(default)")
 FIRESTORE_PROJECT = setting("FIRESTORE_PROJECT", "") or GOOGLE_CLOUD_PROJECT
 FIRESTORE_COLLECTION = setting("FIRESTORE_COLLECTION", "decision_sessions")
 SOURCE_MAX_AGE_DAYS = int(setting("SOURCE_MAX_AGE_DAYS", "90"))
-CORS_ORIGINS = [origin.strip() for origin in setting("CORS_ORIGINS", "http://localhost:3000").split(",") if origin.strip()]
+CORS_ORIGINS = [
+    origin.strip()
+    for origin in setting("CORS_ORIGINS", "http://localhost:3000").split(",")
+    if origin.strip()
+]
