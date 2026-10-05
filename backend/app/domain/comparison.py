@@ -43,8 +43,10 @@ def compare_products(catalog, product_ids: list, amount: float, tenure: int) -> 
                 calculation = calculate_fd(
                     amount, rate["rate"], tenure, rate.get("compounding_frequency")
                 )
-            except ValueError as exc:
-                reason = str(exc)
+            except ValueError:
+                reason = (
+                    "Calculation could not be completed for the selected rate configuration."
+                )
         if ok and calculation is None:
             reason = "Only cumulative payout calculation is currently supported"
         results.append(
