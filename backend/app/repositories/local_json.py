@@ -5,7 +5,6 @@ import re
 from datetime import date, datetime, timezone
 from pathlib import Path
 
-
 DATA_FILE = Path(__file__).resolve().parents[2] / "data" / "fd-products.json"
 _BANK_ALIASES = {"sbi": "State Bank of India"}
 

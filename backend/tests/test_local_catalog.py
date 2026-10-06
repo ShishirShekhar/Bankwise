@@ -1,7 +1,7 @@
 import json
 
-from app.domain.comparison import compare_products
 from app.domain.catalog import product_payload
+from app.domain.comparison import compare_products
 from app.repositories.local_json import LocalJsonCatalog
 
 

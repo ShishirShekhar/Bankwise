@@ -6,7 +6,7 @@ from decimal import ROUND_HALF_UP, Decimal
 def _inr(value: float | None) -> str | None:
     if value is None:
         return None
-    whole = str(int(Decimal(str(value)).quantize(Decimal("1"), rounding=ROUND_HALF_UP)))
+    whole = str(int(Decimal(str(value)).quantize(Decimal(1), rounding=ROUND_HALF_UP)))
     if len(whole) <= 3:
         grouped = whole
     else:
