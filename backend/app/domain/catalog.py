@@ -3,10 +3,13 @@
 from datetime import date, datetime
 
 from app.domain.sources import (
-    condition_is_verified,
+    VerificationStatus,
+    condition_verification,
     freshness,
-    rate_is_usable,
+    rate_verification,
     source_confidence,
+    source_is_stale,
+    source_issues,
 )
 
 
@@ -29,19 +32,21 @@ def source_payload(source: dict) -> dict:
         "confidence": source_confidence(source),
         "verification_status": freshness(source),
         "freshness": freshness(source),
+        "stale": source_is_stale(source),
+        "verification_issues": source_issues(source),
     }
 
 
-def condition_payload(condition: dict, catalog) -> dict:
-    verified, reason = condition_is_verified(catalog, condition)
+def condition_payload(condition: dict, catalog, product_id: str) -> dict:
+    status, reason = condition_verification(catalog, product_id, condition)
     source = catalog.get_source(condition.get("source_id"))
     return {
         "type": condition["condition_type"],
         "value": condition["condition_value"],
-        "verification_status": condition.get("verification_status"),
+        "verification_status": status,
         "source_id": condition.get("source_id"),
         "source_url": condition.get("source_url") or (source or {}).get("url"),
-        "verified": verified,
+        "verified": status == VerificationStatus.HIGH,
         "unverified_reason": reason,
     }
 
@@ -64,7 +69,7 @@ def product_payload(
             or (max_tenure is not None and tenure > max_tenure)
         ):
             eligible = False
-        usable, reason = rate_is_usable(catalog, product["id"], rate)
+        status, reason = rate_verification(catalog, product["id"], rate)
         rates.append(
             {
                 "id": rate["id"],
@@ -80,12 +85,9 @@ def product_payload(
                 "source_id": rate.get("source_id"),
                 "effective_from": _isoformat(rate.get("effective_from")),
                 "effective_to": _isoformat(rate.get("effective_to")),
-                "verification_status": (
-                    "CONFLICT"
-                    if not usable and reason and "conflict" in reason.lower()
-                    else rate.get("verification_status")
-                ),
-                "usable_for_calculation": usable,
+                "verification_status": status,
+                "verification_reason": reason,
+                "usable_for_calculation": status == VerificationStatus.HIGH,
                 "ineligibility_reason": (
                     None
                     if eligible
@@ -102,7 +104,8 @@ def product_payload(
         "status": product["status"],
         "rates": rates,
         "conditions": [
-            condition_payload(c, catalog) for c in product.get("conditions", [])
+            condition_payload(c, catalog, product["id"])
+            for c in product.get("conditions", [])
         ],
         "sources": [source_payload(s) for s in product.get("sources", [])],
         "conflicts": [

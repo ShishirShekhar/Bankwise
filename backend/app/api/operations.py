@@ -12,7 +12,13 @@ from app.config import (
     GEMINI_MODEL,
     GOOGLE_CLOUD_PROJECT,
 )
-from app.domain.sources import freshness, rate_is_usable
+from app.domain.sources import (
+    condition_verification,
+    freshness,
+    rate_verification,
+    source_is_stale,
+    source_issues,
+)
 from app.repositories.local_json import DATA_FILE, LocalJsonCatalog
 from app.schemas import HealthResponse
 
@@ -32,21 +38,23 @@ def verification_run(
     for product in catalog.list_products(category="FD", status="ACTIVE"):
         conflicts = catalog.get_conflicts(product["id"])
         for rate in product["rates"]:
-            usable, reason = rate_is_usable(catalog, product["id"], rate)
+            status, reason = rate_verification(catalog, product["id"], rate)
             reports.append(
                 {
                     "product_id": product["id"],
                     "field": "rate",
                     "rate_id": rate["id"],
-                    "status": (
-                        "HIGH"
-                        if usable
-                        else (
-                            "CONFLICT"
-                            if reason and "conflict" in reason.lower()
-                            else "LOW"
-                        )
-                    ),
+                    "status": status,
+                    "notes": reason,
+                }
+            )
+        for condition in product.get("conditions", []):
+            status, reason = condition_verification(catalog, product["id"], condition)
+            reports.append(
+                {
+                    "product_id": product["id"],
+                    "field": condition["condition_type"],
+                    "status": status,
                     "notes": reason,
                 }
             )
@@ -65,7 +73,10 @@ def verification_run(
                     "product_id": product["id"],
                     "field": "source",
                     "source_id": source["id"],
+                    "status": freshness(source),
                     "freshness": freshness(source),
+                    "stale": source_is_stale(source),
+                    "notes": "; ".join(source_issues(source)) or None,
                 }
             )
     return {"checked": len(reports), "records": reports, "web_fetch_performed": False}

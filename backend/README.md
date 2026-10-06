@@ -52,8 +52,18 @@ RAG, Cloud Storage ingestion, automated external source fetching, and a curated-
 Every source returned by the API (`/api/products/{id}` and `/api/products/{id}/sources`) and by the ADK verification tool includes its URL, type, title, reference, `retrieved_at`, `verified_at`, effective dates, `confidence`, and `verification_status`. Rules live in `app/domain/sources.py`:
 
 - `confidence` is the authority of the source type alone: `HIGH` for official bank pages/PDFs, `MEDIUM` otherwise.
-- `verification_status` (also returned as `freshness` for existing clients) is the confidence downgraded to `LOW` when the source is inactive, has no retrieval/verification date, or is older than `SOURCE_MAX_AGE_DAYS`.
-- Rates and conditions carry a `source_id`. A rate is usable for calculation and a condition is `verified` only when its linked source is `HIGH`; conditions also return `unverified_reason`.
+- `verification_status` (also returned as `freshness` for existing clients) is the confidence downgraded to `LOW` when the source is inactive, has no retrieval/verification date, is older than `SOURCE_MAX_AGE_DAYS` (`stale: true`), or is outside its effective dates. The reasons are listed in `verification_issues`.
+- Rates and conditions carry a `source_id` and get one verification status each, taking the worst result of every check:
+
+| Status | Meaning |
+|---|---|
+| `HIGH` | Linked to a current official bank source with no open conflict; the only status usable as authoritative. |
+| `MEDIUM` | Current source that is not an official bank source. |
+| `LOW` | Stale, inactive, not-yet-effective or expired source or rate, or stored as unverified. |
+| `CONFLICT` | An `OPEN` source conflict exists for the field (`rate`, or the condition type). |
+| `MISSING` | No linked source, or the linked source does not exist. |
+
+Rates return `verification_reason` and `usable_for_calculation`; conditions return `verified` and `unverified_reason`. Comparison and calculation only use `HIGH` rates. `POST /api/verification/run` reports the status of every rate, condition, and source.
 
 The local dataset records only `last_verified`, so `retrieved_at` is set to that same date (a source must be retrieved to be verified). Sources the dataset marks `verify_before_production` are inactive and therefore `LOW`.
 
