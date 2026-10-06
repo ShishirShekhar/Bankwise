@@ -41,8 +41,18 @@ def test_local_rate_ranges_select_one_rate_for_two_years_and_surface_conflicts()
     assert pnb["product"]["conflicts"]
 
 
-def test_local_data_does_not_calculate_without_payout_and_compounding_terms():
-    catalog = LocalJsonCatalog()
+def test_local_data_does_not_calculate_without_payout_and_compounding_terms(tmp_path):
+    from pathlib import Path
+
+    source_file = Path(__file__).parents[1] / "data" / "fd-products.json"
+    data = json.loads(source_file.read_text(encoding="utf-8"))
+    for terms in data["source_metadata"].values():
+        terms.pop("payout_type", None)
+        terms.pop("compounding_frequency", None)
+    data_file = tmp_path / "fd-products.json"
+    data_file.write_text(json.dumps(data), encoding="utf-8")
+
+    catalog = LocalJsonCatalog(data_file)
     products = catalog.list_products(category="FD", status="ACTIVE")
     result = compare_products(
         catalog,
