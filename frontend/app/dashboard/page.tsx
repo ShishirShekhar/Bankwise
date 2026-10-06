@@ -2,9 +2,12 @@
 
 import { useRouter } from "next/navigation";
 import type { FormEvent } from "react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 
+import RequirementSummary from "@/app/requirement-summary";
+import type { AskResponse } from "@/lib/bankwise";
 import { askBankwise } from "@/lib/bankwise";
+import { EXAMPLE_GOALS } from "@/lib/requirements";
 import { setSessionStorageValue } from "@/lib/session-storage";
 
 export default function Dashboard() {
@@ -12,6 +15,15 @@ export default function Dashboard() {
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [clarification, setClarification] = useState<AskResponse | null>(null);
+  const goalInput = useRef<HTMLTextAreaElement>(null);
+
+  function applyExample(example: string) {
+    setQuery(example);
+    setError(null);
+    setClarification(null);
+    goalInput.current?.focus();
+  }
 
   async function submitQuery(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -20,6 +32,12 @@ export default function Dashboard() {
     setError(null);
     try {
       const result = await askBankwise(query.trim());
+      if (result.status === "NEEDS_CLARIFICATION" || result.status === "UNSUPPORTED") {
+        // Keep the user's text so they can add what is missing.
+        setClarification(result);
+        return;
+      }
+      setClarification(null);
       setSessionStorageValue("bankwise:last-ask", JSON.stringify(result));
       router.push("/compare");
     } catch (reason) {
@@ -84,6 +102,7 @@ export default function Dashboard() {
         {/* AI prompt box */}
         <form
           onSubmit={submitQuery}
+          aria-busy={loading}
           className="mx-auto mt-12 max-w-4xl rounded-3xl border border-gray-200 bg-white p-5 shadow-sm"
         >
           <label htmlFor="financial-goal" className="mb-3 block text-sm font-medium text-gray-700">
@@ -92,16 +111,45 @@ export default function Dashboard() {
 
           <textarea
             id="financial-goal"
+            ref={goalInput}
             rows={5}
             value={query}
+            readOnly={loading}
+            maxLength={4000}
             onChange={(event) => setQuery(event.target.value)}
             placeholder="For example: I have ₹5 lakh and want to invest for 2 years, but I may need the money early."
             className="w-full resize-none rounded-2xl border border-gray-200 bg-gray-50 px-5 py-4 text-base text-gray-900 transition outline-none placeholder:text-gray-400 focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-50"
           />
 
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <span className="text-xs font-medium text-gray-500">Try an example:</span>
+            {EXAMPLE_GOALS.map((example) => (
+              <button
+                key={example}
+                type="button"
+                disabled={loading}
+                onClick={() => applyExample(example)}
+                className="rounded-full border border-blue-100 bg-blue-50 px-3 py-1.5 text-left text-xs text-blue-800 transition hover:border-blue-300 disabled:opacity-60"
+              >
+                {example}
+              </button>
+            ))}
+          </div>
+
+          {error && (
+            <p
+              role="alert"
+              className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800"
+            >
+              {error}
+            </p>
+          )}
+
           <div className="mt-4 flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
             <p className="text-sm text-gray-500" role="status">
-              {error || "BankWise will understand your goal and preferences."}
+              {loading
+                ? "Understanding your goal and checking verified FD rates…"
+                : "BankWise will understand your goal and preferences. Never share account numbers, PAN, Aadhaar or passwords."}
             </p>
 
             <button
@@ -113,6 +161,15 @@ export default function Dashboard() {
             </button>
           </div>
         </form>
+
+        {clarification && (
+          <div className="mx-auto mt-6 max-w-4xl space-y-3" role="status">
+            {clarification.message && (
+              <p className="font-medium text-amber-900">{clarification.message}</p>
+            )}
+            <RequirementSummary requirements={clarification.requirements} />
+          </div>
+        )}
 
         {/* Product categories */}
         <div className="mt-14">

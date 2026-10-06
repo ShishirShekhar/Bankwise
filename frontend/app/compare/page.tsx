@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
+import RequirementSummary from "@/app/requirement-summary";
 import type { AskOption, AskResponse } from "@/lib/bankwise";
 import { formatDuration, formatINR } from "@/lib/bankwise";
 import { setSessionStorageValue, useSessionStorageValue } from "@/lib/session-storage";
@@ -118,26 +119,14 @@ export default function Compare() {
                 role="status"
               >
                 <p className="font-semibold text-amber-900">{result.message}</p>
-                {requirements?.missing?.length ? (
-                  <p className="mt-1 text-sm text-amber-800">
-                    Please provide: {requirements.missing.join(", ")}.
-                  </p>
-                ) : null}
               </div>
             )}
 
-            <div className="mt-7 rounded-2xl border border-blue-100 bg-blue-50 px-6 py-5">
-              <p className="text-xs font-semibold tracking-wider text-blue-600 uppercase">
-                Your requirements
-              </p>
-              <p className="mt-2 text-gray-800">
-                {requirements?.category || "FD"} ·{" "}
-                {requirements?.amount !== null && requirements?.amount !== undefined
-                  ? formatINR(requirements.amount)
-                  : "Amount not provided"}{" "}
-                · {duration} · {liquidity}
-              </p>
-            </div>
+            {requirements && (
+              <div className="mt-7">
+                <RequirementSummary requirements={requirements} />
+              </div>
+            )}
 
             {result.options.length > 0 ? (
               <div className="mt-10">
