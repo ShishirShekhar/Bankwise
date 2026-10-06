@@ -62,7 +62,12 @@ def _redact_long_numbers(text: str) -> str:
         while end < len(text) and text[end].isdigit():
             digits += 1
             end += 1
-            if end < len(text) and text[end] in " -" and end + 1 < len(text) and text[end + 1].isdigit():
+            if (
+                end < len(text)
+                and text[end] in " -"
+                and end + 1 < len(text)
+                and text[end + 1].isdigit()
+            ):
                 end += 1
         if digits in (12, 16) and (end == len(text) or not text[end].isdigit()):
             parts.extend((text[cursor:start], "[REDACTED]"))
@@ -80,18 +85,26 @@ def extract_requirements(query: str, use_gemini: bool = True) -> Requirements:
     """Use Gemini when configured; otherwise extract only values stated explicitly."""
     query = redact_sensitive_input(query)
     amount_match = re.search(
-        r"(?:₹|rs\.?\s*|inr\s*)([\d,]{1,24}(?:\.\d{1,4})?)\s*(lakh|lac| lakhs|crore)?",
+        r"(?:(?:₹|rs\.?\s*|inr\s*)(?P<currency_amount>[\d,]{1,24}(?:\.\d{1,4})?)\s*(?P<currency_scale>lakhs?|lacs?|crores?)?"
+        r"|(?<![\w.])(?P<bare_amount>[\d,]{1,24}(?:\.\d{1,4})?)\s*(?P<bare_scale>lakhs?|lacs?|crores?)\b)",
         query,
         re.IGNORECASE,
     )
     amount = None
     if amount_match:
-        amount = float(amount_match.group(1).replace(",", ""))
-        scale = (amount_match.group(2) or "").strip().lower()
+        raw_amount = amount_match.group("currency_amount") or amount_match.group(
+            "bare_amount"
+        )
+        scale = (
+            amount_match.group("currency_scale")
+            or amount_match.group("bare_scale")
+            or ""
+        ).lower()
+        amount = float(raw_amount.replace(",", ""))
         amount *= (
             100000
             if scale.startswith(("lakh", "lac"))
-            else 10000000 if scale == "crore" else 1
+            else 10000000 if scale.startswith("crore") else 1
         )
     tenure = None
     years = re.search(r"(\d{1,4}(?:\.\d{1,2})?)\s*years?", query, re.IGNORECASE)
