@@ -1,7 +1,7 @@
 """ADK tools for requirement extraction, product research, verification, and calculation."""
 
 from app.calculators.fd import CalculationError, calculate_fd
-from app.domain.catalog import product_payload, source_payload
+from app.domain.catalog import conflict_payload, product_payload, source_payload
 from app.domain.input import extract_requirements
 from app.domain.sources import rate_is_usable
 from app.repositories.local_json import LocalJsonCatalog
@@ -34,16 +34,7 @@ def verify_product_tool(product_id: str) -> dict:
     return {
         "product_id": product_id,
         "status": "CONFLICT" if conflicts else "CHECKED",
-        "conflicts": [
-            {
-                "field": c["field_name"],
-                "value_a": c["value_a"],
-                "value_b": c["value_b"],
-                "source_a": c["source_a"],
-                "source_b": c["source_b"],
-            }
-            for c in conflicts
-        ],
+        "conflicts": [conflict_payload(c) for c in conflicts],
         "sources": [source_payload(s) for s in product["sources"]],
     }
 
