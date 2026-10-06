@@ -22,6 +22,18 @@ def _inr(value: float | None) -> str | None:
     return f"₹{grouped}"
 
 
+_COMPOUNDING_LABELS = {1: "annual", 2: "half-yearly", 4: "quarterly", 12: "monthly"}
+
+
+def _compounding_text(frequencies: set) -> str:
+    """Describe compounding only when every calculated option used the same sourced rule."""
+    if len(frequencies) == 1:
+        label = _COMPOUNDING_LABELS.get(next(iter(frequencies)))
+        if label:
+            return f"Estimates assume a cumulative FD with {label} reinvestment"
+    return "Estimates assume a cumulative FD"
+
+
 def to_ask_response(result: dict) -> dict:
     requirements = result["requirements"]
     missing = requirements.get("missing_information", [])
@@ -30,6 +42,7 @@ def to_ask_response(result: dict) -> dict:
 
     options = []
     skipped = []
+    compounding_frequencies = set()
     for comparison in comparisons if category in (None, "FD") else []:
         product = comparison["product"]
         bank = product["bank"]
@@ -107,6 +120,8 @@ def to_ask_response(result: dict) -> dict:
 
         maturity = calculation.get("maturity_amount")
         interest = calculation.get("interest_earned")
+        if maturity is not None:
+            compounding_frequencies.add(calculation.get("compounding_frequency_per_year"))
         options.append(
             {
                 "bank": bank,
@@ -174,11 +189,19 @@ def to_ask_response(result: dict) -> dict:
         duration = requirements.get("duration_months")
         explanation = (
             f"For {amount_text} over {duration} months, {top['bank']} has the highest "
-            f"estimated maturity at {top['maturity']}. Estimates assume a cumulative FD "
-            "with quarterly reinvestment and may differ from the bank's exact day-count method. "
-            "You mentioned possible early withdrawal; the amount is not estimated because no "
-            "withdrawal date was provided. Review each option's sourced withdrawal terms."
+            f"estimated maturity at {top['maturity']}. "
+            f"{_compounding_text(compounding_frequencies)} and may differ from the bank's "
+            "exact day-count method."
         )
+        if (
+            requirements.get("liquidity_preference") == "HIGH"
+            or requirements.get("premature_withdrawal_important") is True
+        ):
+            explanation += (
+                " You mentioned possible early withdrawal; the amount is not estimated "
+                "because no withdrawal date was provided. Review each option's sourced "
+                "withdrawal terms."
+            )
     else:
         status = "NO_MATCH"
         message = "No currently verified rate matches this amount and duration."
