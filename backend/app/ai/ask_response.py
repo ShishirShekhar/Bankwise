@@ -143,6 +143,8 @@ def to_ask_response(result: dict) -> dict:
                 ),
                 "source": source,
                 "calculation_source_url": rate.get("calculation_source_url"),
+                # Deterministic calculator output, unchanged, for the breakdown view.
+                "calculation": comparison.get("calculation"),
                 "penalty_source_url": withdrawal.get("source_url") if withdrawal else None,
             }
         )

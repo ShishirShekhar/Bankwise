@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 
+import CalculationBreakdown from "@/app/calculation-breakdown";
 import type { AskOption, AskResponse } from "@/lib/bankwise";
 import { formatDuration, formatINR } from "@/lib/bankwise";
 import { useSessionStorageValue } from "@/lib/session-storage";
@@ -206,6 +207,13 @@ export default function ProductDetails() {
                   )}
                 </dl>
               </section>
+            </div>
+
+            <div className="mt-8">
+              <CalculationBreakdown
+                calculation={option.calculation}
+                unavailableReason={option.calculation_note}
+              />
             </div>
 
             <section className="mt-8 rounded-3xl bg-[#172554] p-8 text-white">
