@@ -43,6 +43,16 @@ Gemini requirement extraction uses Vertex AI when `GOOGLE_CLOUD_PROJECT` is conf
 
 RAG, Cloud Storage ingestion, automated external source fetching, and a curated-data write/import pipeline are not enabled yet. BigQuery access requires permission to create query jobs and read the configured dataset (typically BigQuery Job User plus dataset Data Viewer). Firestore access requires permission to read/write documents (typically Firestore User).
 
+## Data model
+
+[`sql/bigquery_schema.sql`](sql/bigquery_schema.sql) defines the catalogue tables. Each table has an `id` primary key; relationships are declared as BigQuery `NOT ENFORCED` foreign keys, so application code must still validate references.
+
+- `banks` → `products` (`bank_id`)
+- `products` → `sources`, `product_rates`, `product_conditions`, `verification_records`, `source_conflicts` (`product_id`)
+- `sources` → `product_rates`, `product_conditions`, `verification_records` (`source_id`) and `source_conflicts` (`source_a`, `source_b`)
+
+Sources carry the URL, type, title, retrieval/verification timestamps, and effective dates for every financial fact. Rates and conditions carry a `verification_status`. Conflicts keep both observed values and their sources, with an `OPEN`/resolved status and resolution fields. `tests/test_bigquery_schema.py` checks these relationships and provenance columns.
+
 ## Data and trust rules
 
 `everything.md` requires official source URLs, retrieval/verification timestamps, effective dates, confidence, and conflict visibility. No bank rate seed values are included because no official source records were supplied. Open conflicts block calculations. Generic compound interest is labeled with a warning and should be replaced with documented bank-specific conventions when those are known.
