@@ -2,7 +2,11 @@
   "compilerOptions": {
     // Language & environment
     "target": "ES2022",
-    "lib": ["dom", "dom.iterable", "esnext"],
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "esnext"
+    ],
     "jsx": "react-jsx",
     // Modules
     "module": "esnext",
@@ -12,7 +16,9 @@
     "esModuleInterop": true,
     "allowJs": false,
     "paths": {
-      "@/*": ["./*"]
+      "@/*": [
+        "./*"
+      ]
     },
     // Strictness
     "strict": true,
@@ -38,5 +44,7 @@
     ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts"
   ],
-  "exclude": ["node_modules"]
+  "exclude": [
+    "node_modules"
+  ]
 }
