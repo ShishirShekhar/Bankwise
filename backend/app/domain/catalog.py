@@ -2,11 +2,48 @@
 
 from datetime import date, datetime
 
-from app.domain.sources import freshness, rate_is_usable
+from app.domain.sources import (
+    condition_is_verified,
+    freshness,
+    rate_is_usable,
+    source_confidence,
+)
 
 
 def _isoformat(value):
     return value.isoformat() if isinstance(value, (date, datetime)) else value
+
+
+def source_payload(source: dict) -> dict:
+    """Provenance shown for a source wherever it is returned by the API or tools."""
+    return {
+        "id": source["id"],
+        "type": source["source_type"],
+        "url": source["url"],
+        "title": source["title"],
+        "reference": source.get("reference"),
+        "retrieved_at": _isoformat(source.get("retrieved_at")),
+        "verified_at": _isoformat(source.get("verified_at")),
+        "effective_from": _isoformat(source.get("effective_from")),
+        "effective_to": _isoformat(source.get("effective_to")),
+        "confidence": source_confidence(source),
+        "verification_status": freshness(source),
+        "freshness": freshness(source),
+    }
+
+
+def condition_payload(condition: dict, catalog) -> dict:
+    verified, reason = condition_is_verified(catalog, condition)
+    source = catalog.get_source(condition.get("source_id"))
+    return {
+        "type": condition["condition_type"],
+        "value": condition["condition_value"],
+        "verification_status": condition.get("verification_status"),
+        "source_id": condition.get("source_id"),
+        "source_url": condition.get("source_url") or (source or {}).get("url"),
+        "verified": verified,
+        "unverified_reason": reason,
+    }
 
 
 def product_payload(
@@ -65,28 +102,9 @@ def product_payload(
         "status": product["status"],
         "rates": rates,
         "conditions": [
-            {
-                "type": c["condition_type"],
-                "value": c["condition_value"],
-                "verification_status": c.get("verification_status"),
-                "source_url": c.get("source_url"),
-            }
-            for c in product.get("conditions", [])
+            condition_payload(c, catalog) for c in product.get("conditions", [])
         ],
-        "sources": [
-            {
-                "id": s["id"],
-                "type": s["source_type"],
-                "url": s["url"],
-                "title": s["title"],
-                "reference": s.get("reference"),
-                "retrieved_at": _isoformat(s.get("retrieved_at")),
-                "verified_at": _isoformat(s.get("verified_at")),
-                "effective_from": _isoformat(s.get("effective_from")),
-                "freshness": freshness(s),
-            }
-            for s in product.get("sources", [])
-        ],
+        "sources": [source_payload(s) for s in product.get("sources", [])],
         "conflicts": [
             {
                 "id": conflict["id"],

@@ -7,6 +7,9 @@ export type Source = {
   retrieved_at?: string | null;
   verified_at?: string | null;
   effective_from?: string | null;
+  effective_to?: string | null;
+  confidence?: string | null;
+  verification_status?: string | null;
   freshness?: string | null;
 };
 

@@ -52,6 +52,9 @@ class LocalJsonCatalog:
                 "url": terms.get("rate_url"),
                 "title": row.get("source_name"),
                 "reference": source_reference,
+                # The dataset records only when a source was last verified; it
+                # must have been retrieved to be verified, so use that date.
+                "retrieved_at": _as_datetime(row.get("last_verified")),
                 "verified_at": _as_datetime(row.get("last_verified")),
                 "status": (
                     "ACTIVE"
@@ -151,6 +154,7 @@ class LocalJsonCatalog:
                             "condition_type": condition_type,
                             "condition_value": value,
                             "verification_status": "SOURCE_METADATA",
+                            "source_id": source_id,
                             "source_url": source_url,
                         }
                     )

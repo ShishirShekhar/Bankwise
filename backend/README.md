@@ -47,6 +47,16 @@ RAG, Cloud Storage ingestion, automated external source fetching, and a curated-
 
 `everything.md` requires official source URLs, retrieval/verification timestamps, effective dates, confidence, and conflict visibility. No bank rate seed values are included because no official source records were supplied. Open conflicts block calculations. Generic compound interest is labeled with a warning and should be replaced with documented bank-specific conventions when those are known.
 
+### Source metadata
+
+Every source returned by the API (`/api/products/{id}` and `/api/products/{id}/sources`) and by the ADK verification tool includes its URL, type, title, reference, `retrieved_at`, `verified_at`, effective dates, `confidence`, and `verification_status`. Rules live in `app/domain/sources.py`:
+
+- `confidence` is the authority of the source type alone: `HIGH` for official bank pages/PDFs, `MEDIUM` otherwise.
+- `verification_status` (also returned as `freshness` for existing clients) is the confidence downgraded to `LOW` when the source is inactive, has no retrieval/verification date, or is older than `SOURCE_MAX_AGE_DAYS`.
+- Rates and conditions carry a `source_id`. A rate is usable for calculation and a condition is `verified` only when its linked source is `HIGH`; conditions also return `unverified_reason`.
+
+The local dataset records only `last_verified`, so `retrieved_at` is set to that same date (a source must be retrieved to be verified). Sources the dataset marks `verify_before_production` are inactive and therefore `LOW`.
+
 ## Container
 
 ```sh
