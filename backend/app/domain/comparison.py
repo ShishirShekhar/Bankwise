@@ -38,7 +38,8 @@ def compare_products(catalog, product_ids: list, amount: float, tenure: int) -> 
         else:
             ok, reason = False, "No single eligible rate band is available"
         calculation = None
-        if ok and rate.get("payout_type", "").upper() == "CUMULATIVE":
+        payout_type = (rate.get("payout_type") or "").upper() if rate else ""
+        if ok and payout_type == "CUMULATIVE":
             try:
                 calculation = calculate_fd(
                     amount, rate["rate"], tenure, rate.get("compounding_frequency")
@@ -46,7 +47,11 @@ def compare_products(catalog, product_ids: list, amount: float, tenure: int) -> 
             except ValueError:
                 reason = "Calculation is unavailable for the selected inputs"
         if ok and calculation is None:
-            reason = "Only cumulative payout calculation is currently supported"
+            reason = (
+                "The local data does not specify the payout type"
+                if not payout_type
+                else "Only cumulative payout calculation is currently supported"
+            )
         results.append(
             {
                 "product": payload,

@@ -13,7 +13,7 @@ from app.config import (
     GOOGLE_CLOUD_PROJECT,
 )
 from app.domain.sources import freshness, rate_is_usable
-from app.repositories.bigquery import BigQueryRepository
+from app.repositories.local_json import DATA_FILE, LocalJsonCatalog
 from app.schemas import HealthResponse
 
 router = APIRouter()
@@ -26,7 +26,7 @@ def health():
 
 @router.post("/api/verification/run")
 def verification_run(
-    catalog: Annotated[BigQueryRepository, Depends(get_catalog)],
+    catalog: Annotated[LocalJsonCatalog, Depends(get_catalog)],
 ):
     reports = []
     for product in catalog.list_products(category="FD", status="ACTIVE"):
@@ -81,6 +81,9 @@ def _installed(module: str) -> bool:
 @router.get("/api/agent/health")
 def agent_health():
     return {
+        "catalog_source": "local_json",
+        "local_data_configured": DATA_FILE.is_file(),
+        "session_store": "in_memory",
         "adk_configured": bool(GOOGLE_CLOUD_PROJECT and _installed("google.adk")),
         "gemini_configured": bool(GOOGLE_CLOUD_PROJECT and _installed("google.genai")),
         "bigquery_configured": bool(

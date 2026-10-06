@@ -1,7 +1,12 @@
 """Focused service operations: catalog."""
 
+from datetime import date, datetime
 
 from app.domain.sources import freshness, rate_is_usable
+
+
+def _isoformat(value):
+    return value.isoformat() if isinstance(value, (date, datetime)) else value
 
 
 def product_payload(
@@ -34,8 +39,10 @@ def product_payload(
                 "tenure_max_months": rate.get("tenure_max_months"),
                 "compounding_frequency": rate.get("compounding_frequency"),
                 "payout_type": rate.get("payout_type"),
-                "effective_from": rate.get("effective_from"),
-                "effective_to": rate.get("effective_to"),
+                "calculation_source_url": rate.get("calculation_source_url"),
+                "source_id": rate.get("source_id"),
+                "effective_from": _isoformat(rate.get("effective_from")),
+                "effective_to": _isoformat(rate.get("effective_to")),
                 "verification_status": (
                     "CONFLICT"
                     if not usable and reason and "conflict" in reason.lower()
@@ -62,6 +69,7 @@ def product_payload(
                 "type": c["condition_type"],
                 "value": c["condition_value"],
                 "verification_status": c.get("verification_status"),
+                "source_url": c.get("source_url"),
             }
             for c in product.get("conditions", [])
         ],
@@ -71,10 +79,25 @@ def product_payload(
                 "type": s["source_type"],
                 "url": s["url"],
                 "title": s["title"],
-                "retrieved_at": s.get("retrieved_at"),
-                "verified_at": s.get("verified_at"),
+                "reference": s.get("reference"),
+                "retrieved_at": _isoformat(s.get("retrieved_at")),
+                "verified_at": _isoformat(s.get("verified_at")),
+                "effective_from": _isoformat(s.get("effective_from")),
                 "freshness": freshness(s),
             }
             for s in product.get("sources", [])
+        ],
+        "conflicts": [
+            {
+                "id": conflict["id"],
+                "field": conflict["field_name"],
+                "value_a": conflict.get("value_a"),
+                "source_a": conflict.get("source_a"),
+                "value_b": conflict.get("value_b"),
+                "source_b": conflict.get("source_b"),
+                "source_b_url": conflict.get("source_b_url"),
+                "note": conflict.get("note"),
+            }
+            for conflict in catalog.get_conflicts(product["id"])
         ],
     }
