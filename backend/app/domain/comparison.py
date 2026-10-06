@@ -21,11 +21,19 @@ def compare_products(catalog, product_ids: list, amount: float, tenure: int) -> 
                     r.get("tenure_months") is None
                     and (
                         r.get("tenure_min_months") is None
-                        or tenure >= r["tenure_min_months"]
+                        or tenure > r["tenure_min_months"]
+                        or (
+                            r.get("tenure_min_inclusive", True)
+                            and tenure == r["tenure_min_months"]
+                        )
                     )
                     and (
                         r.get("tenure_max_months") is None
-                        or tenure <= r["tenure_max_months"]
+                        or tenure < r["tenure_max_months"]
+                        or (
+                            r.get("tenure_max_inclusive", True)
+                            and tenure == r["tenure_max_months"]
+                        )
                     )
                 )
             )

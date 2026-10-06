@@ -91,6 +91,12 @@ class LocalJsonCatalog:
                     "tenure_months": None,
                     "tenure_min_months": row.get("tenure_min_months"),
                     "tenure_max_months": row.get("tenure_max_months"),
+                    "tenure_min_inclusive": not row.get("calculation_note", "").lower().startswith("rate applies to above")
+                    and not (
+                        "2 years 1 day" in row.get("calculation_note", "").lower()
+                        and "21 months" not in row.get("calculation_note", "").lower()
+                    ),
+                    "tenure_max_inclusive": "less than" not in row.get("calculation_note", "").lower(),
                     "compounding_frequency": terms.get("compounding_frequency"),
                     "payout_type": terms.get("payout_type"),
                     "calculation_source_url": terms.get("calculation_url"),
