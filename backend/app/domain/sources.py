@@ -23,6 +23,8 @@ def freshness(source: dict) -> str:
 
 
 def rate_is_usable(catalog, product_id: str, rate: dict) -> tuple:
+    if catalog.get_conflicts(product_id, field_name="rate"):
+        return False, "Rate has an unresolved source conflict"
     if rate.get("verification_status") != "HIGH":
         return False, "Rate is not verified at HIGH confidence"
     today = datetime.now(timezone.utc).date()
@@ -30,8 +32,6 @@ def rate_is_usable(catalog, product_id: str, rate: dict) -> tuple:
         return False, "Rate is not effective yet"
     if rate.get("effective_to") and rate["effective_to"] < today:
         return False, "Rate has expired"
-    if catalog.get_conflicts(product_id, field_name="rate"):
-        return False, "Rate has an unresolved source conflict"
     source = (
         catalog.get_source(rate.get("source_id")) if rate.get("source_id") else None
     )

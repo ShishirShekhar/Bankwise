@@ -1,10 +1,16 @@
 """ADK tools for requirement extraction, product research, verification, and calculation."""
 
+from datetime import date, datetime
+
 from app.calculators.fd import CalculationError, calculate_fd
 from app.domain.catalog import product_payload
 from app.domain.input import extract_requirements
 from app.domain.sources import freshness, rate_is_usable
-from app.repositories.bigquery import BigQueryRepository
+from app.repositories.local_json import LocalJsonCatalog
+
+
+def _isoformat(value):
+    return value.isoformat() if isinstance(value, (date, datetime)) else value
 
 
 def extract_requirements_tool(query: str) -> dict:
@@ -14,7 +20,7 @@ def extract_requirements_tool(query: str) -> dict:
 
 def search_products_tool(amount: float, tenure_months: int) -> dict:
     """Find FD products for the requested amount and tenure, including source status."""
-    catalog = BigQueryRepository()
+    catalog = LocalJsonCatalog()
     products = catalog.list_products(category="FD", status="ACTIVE")
     return {
         "products": [
@@ -26,7 +32,7 @@ def search_products_tool(amount: float, tenure_months: int) -> dict:
 
 def verify_product_tool(product_id: str) -> dict:
     """Check stored source freshness and return open conflicts for a product."""
-    catalog = BigQueryRepository()
+    catalog = LocalJsonCatalog()
     product = catalog.get_product(product_id)
     if not product:
         return {"product_id": product_id, "status": "MISSING"}
@@ -49,6 +55,9 @@ def verify_product_tool(product_id: str) -> dict:
                 "id": s["id"],
                 "title": s["title"],
                 "url": s["url"],
+                "reference": s.get("reference"),
+                "verified_at": _isoformat(s.get("verified_at")),
+                "effective_from": _isoformat(s.get("effective_from")),
                 "freshness": freshness(s),
             }
             for s in product["sources"]
@@ -58,7 +67,7 @@ def verify_product_tool(product_id: str) -> dict:
 
 def calculate_fd_tool(product_id: str, principal: float, tenure_months: int) -> dict:
     """Calculate only from one eligible rate backed by a current, conflict-free official source."""
-    catalog = BigQueryRepository()
+    catalog = LocalJsonCatalog()
     product = catalog.get_product(product_id, category="FD", status="ACTIVE")
     if not product:
         return {"status": "MISSING", "product_id": product_id}
@@ -88,10 +97,10 @@ def calculate_fd_tool(product_id: str, principal: float, tenure_months: int) -> 
     usable, reason = rate_is_usable(catalog, product["id"], rate)
     if not usable:
         return {"status": "BLOCKED", "reason": reason}
-    if rate.get("payout_type", "").upper() != "CUMULATIVE":
+    if (rate.get("payout_type") or "").upper() != "CUMULATIVE":
         return {
             "status": "UNSUPPORTED",
-            "reason": "Only cumulative payout is currently supported",
+            "reason": "The local data does not specify a cumulative payout type",
         }
     try:
         return {
