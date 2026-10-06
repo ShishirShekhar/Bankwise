@@ -5,10 +5,9 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.api.dependencies import get_catalog
-from app.calculators.fd import CalculationError, calculate_fd
 from app.domain.catalog import product_payload
 from app.domain.comparison import compare_products
-from app.domain.sources import rate_is_usable
+from app.domain.rates import calculate_product_fd
 from app.repositories.local_json import LocalJsonCatalog
 from app.schemas import CompareRequest, FDCalculationRequest
 
@@ -64,50 +63,17 @@ def calculate_fd_endpoint(
             422,
             "Calculations require a product_id so the rate and source can be verified",
         )
-    product = catalog.get_product(request.product_id, category="FD", status="ACTIVE")
-    if not product:
-        raise HTTPException(404, "FD product not found")
-    matching = [
-        rate
-        for rate in product["rates"]
-        if (
-            rate.get("tenure_months") == request.tenure_months
-            or (
-                rate.get("tenure_months") is None
-                and (
-                    rate.get("tenure_min_months") is None
-                    or request.tenure_months >= rate["tenure_min_months"]
-                )
-                and (
-                    rate.get("tenure_max_months") is None
-                    or request.tenure_months <= rate["tenure_max_months"]
-                )
-            )
-        )
-        and (rate.get("min_amount") is None or request.principal >= rate["min_amount"])
-        and (rate.get("max_amount") is None or request.principal <= rate["max_amount"])
-    ]
-    if len(matching) != 1:
-        raise HTTPException(
-            422, "No unique rate matches the supplied amount and tenure"
-        )
-    rate = matching[0]
-    usable, reason = rate_is_usable(catalog, product["id"], rate)
-    if not usable:
-        raise HTTPException(409, "Calculation blocked: " + str(reason))
-    if (rate.get("payout_type") or "").upper() != "CUMULATIVE":
-        raise HTTPException(
-            422, "The local data does not specify a cumulative payout type"
-        )
-    try:
-        return calculate_fd(
-            request.principal,
-            rate["rate"],
-            request.tenure_months,
-            rate.get("compounding_frequency"),
-        )
-    except CalculationError as exc:
-        raise HTTPException(422, str(exc))
+    outcome = calculate_product_fd(
+        catalog, request.product_id, request.principal, request.tenure_months
+    )
+    status = outcome["status"]
+    if status == "CALCULATED":
+        return outcome["result"]
+    if status == "MISSING":
+        raise HTTPException(404, outcome["reason"])
+    if status == "BLOCKED":
+        raise HTTPException(409, "Calculation blocked: " + outcome["reason"])
+    raise HTTPException(422, outcome["reason"])
 
 
 @router.post("/api/compare")

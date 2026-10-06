@@ -2,10 +2,10 @@
 
 from datetime import date, datetime
 
-from app.calculators.fd import CalculationError, calculate_fd
 from app.domain.catalog import product_payload
 from app.domain.input import extract_requirements
-from app.domain.sources import freshness, rate_is_usable
+from app.domain.rates import calculate_product_fd
+from app.domain.sources import freshness
 from app.repositories.local_json import LocalJsonCatalog
 
 
@@ -66,52 +66,25 @@ def verify_product_tool(product_id: str) -> dict:
 
 
 def calculate_fd_tool(product_id: str, principal: float, tenure_months: int) -> dict:
-    """Calculate only from one eligible rate backed by a current, conflict-free official source."""
-    catalog = LocalJsonCatalog()
-    product = catalog.get_product(product_id, category="FD", status="ACTIVE")
-    if not product:
-        return {"status": "MISSING", "product_id": product_id}
-    matches = [
-        rate
-        for rate in product["rates"]
-        if (
-            rate.get("tenure_months") == tenure_months
-            or (
-                rate.get("tenure_months") is None
-                and (
-                    rate.get("tenure_min_months") is None
-                    or tenure_months >= rate["tenure_min_months"]
-                )
-                and (
-                    rate.get("tenure_max_months") is None
-                    or tenure_months <= rate["tenure_max_months"]
-                )
-            )
-        )
-        and (rate.get("min_amount") is None or principal >= rate["min_amount"])
-        and (rate.get("max_amount") is None or principal <= rate["max_amount"])
-    ]
-    if len(matches) != 1:
-        return {"status": "UNAVAILABLE", "reason": "No unique eligible rate band"}
-    rate = matches[0]
-    usable, reason = rate_is_usable(catalog, product["id"], rate)
-    if not usable:
-        return {"status": "BLOCKED", "reason": reason}
-    if (rate.get("payout_type") or "").upper() != "CUMULATIVE":
-        return {
-            "status": "UNSUPPORTED",
-            "reason": "The local data does not specify a cumulative payout type",
-        }
-    try:
-        return {
-            "status": "CALCULATED",
-            "product_id": product["id"],
-            "result": calculate_fd(
-                principal,
-                rate["rate"],
-                tenure_months,
-                rate.get("compounding_frequency"),
-            ),
-        }
-    except CalculationError as exc:
-        return {"status": "BLOCKED", "reason": str(exc)}
+    """Calculate FD maturity with Bankwise's deterministic calculator.
+
+    Always call this tool for maturity amounts or interest earned; never do the
+    arithmetic yourself. It uses only the product's single eligible rate band
+    backed by a current, conflict-free official source.
+
+    Args:
+        product_id: Bankwise FD product id from search_products_tool, for
+            example "hdfc-bank-regular-fixed-deposit".
+        principal: Deposit amount in Indian rupees, for example 500000.
+        tenure_months: Deposit tenure in whole months, for example 24.
+
+    Returns:
+        A dict with ``status``. CALCULATED includes ``result`` exactly as the
+        calculator returned it (maturity_amount, interest_earned,
+        calculation_version, warnings). INVALID_INPUT, MISSING, UNAVAILABLE,
+        BLOCKED, and UNSUPPORTED include a ``reason``; report it instead of a
+        number.
+    """
+    return calculate_product_fd(
+        LocalJsonCatalog(), product_id, principal, tenure_months
+    )
