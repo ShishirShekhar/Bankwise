@@ -6,10 +6,10 @@ FastAPI backend for source-grounded FD comparison. Financial calculations live i
 
 - `app/main.py` creates the FastAPI application and registers route modules.
 - `app/api/` contains routers grouped by assistant, catalog/calculation, decision/session, and operational endpoints. Shared repository providers are in `api/dependencies.py`.
-- `app/domain/` contains requirement parsing, source verification, product shaping, comparison, and ID generation. It does not define HTTP routes.
+- `app/domain/` contains requirement parsing, source verification, product shaping, comparison, ID generation, and the validated `Bank`/`Product` models in `domain/models.py` (they mirror the `banks` and `products` tables; `from_row`/`to_row` convert to and from table rows). It does not define HTTP routes.
 - `app/calculators/` contains deterministic financial calculations.
 - `app/ai/` contains Gemini extraction, the conversational pipeline, and AI tool operations.
-- `app/repositories/` contains BigQuery and Firestore access.
+- `app/repositories/` contains BigQuery and Firestore access plus the local JSON catalogue and in-memory sessions. Both catalogues expose `list_banks()` and `get_bank(id)` returning `Bank` models.
 
 `app/services.py` re-exports domain functions for older imports. New code should import directly from the relevant `app.domain` module.
 
