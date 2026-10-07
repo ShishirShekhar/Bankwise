@@ -1,8 +1,8 @@
--- Run with `bq query --use_legacy_sql=false < bigquery_schema.sql` after
--- selecting the project/dataset; replace `YOUR_PROJECT.bankwise` as needed.
-CREATE SCHEMA IF NOT EXISTS `YOUR_PROJECT.bankwise` OPTIONS(location="us-central1");
+-- Apply with `python -m scripts.apply_bigquery_schema` from backend/.
+-- Project, dataset, and location are loaded from backend/.env via app.config.
+CREATE SCHEMA IF NOT EXISTS `{{BIGQUERY_PROJECT}}.{{BIGQUERY_DATASET}}` OPTIONS(location="{{BIGQUERY_LOCATION}}");
 
-CREATE TABLE IF NOT EXISTS `YOUR_PROJECT.bankwise.banks` (
+CREATE TABLE IF NOT EXISTS `{{BIGQUERY_PROJECT}}.{{BIGQUERY_DATASET}}.banks` (
   id STRING NOT NULL,
   name STRING NOT NULL,
   website STRING,
@@ -10,7 +10,7 @@ CREATE TABLE IF NOT EXISTS `YOUR_PROJECT.bankwise.banks` (
   status STRING NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS `YOUR_PROJECT.bankwise.products` (
+CREATE TABLE IF NOT EXISTS `{{BIGQUERY_PROJECT}}.{{BIGQUERY_DATASET}}.products` (
   id STRING NOT NULL,
   bank_id STRING NOT NULL,
   category STRING NOT NULL,
@@ -19,7 +19,7 @@ CREATE TABLE IF NOT EXISTS `YOUR_PROJECT.bankwise.products` (
   status STRING NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS `YOUR_PROJECT.bankwise.product_rates` (
+CREATE TABLE IF NOT EXISTS `{{BIGQUERY_PROJECT}}.{{BIGQUERY_DATASET}}.product_rates` (
   id STRING NOT NULL,
   product_id STRING NOT NULL,
   rate FLOAT64 NOT NULL,
@@ -37,7 +37,7 @@ CREATE TABLE IF NOT EXISTS `YOUR_PROJECT.bankwise.product_rates` (
   verification_status STRING NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS `YOUR_PROJECT.bankwise.product_conditions` (
+CREATE TABLE IF NOT EXISTS `{{BIGQUERY_PROJECT}}.{{BIGQUERY_DATASET}}.product_conditions` (
   id STRING NOT NULL,
   product_id STRING NOT NULL,
   condition_type STRING NOT NULL,
@@ -46,7 +46,7 @@ CREATE TABLE IF NOT EXISTS `YOUR_PROJECT.bankwise.product_conditions` (
   verification_status STRING NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS `YOUR_PROJECT.bankwise.sources` (
+CREATE TABLE IF NOT EXISTS `{{BIGQUERY_PROJECT}}.{{BIGQUERY_DATASET}}.sources` (
   id STRING NOT NULL,
   product_id STRING NOT NULL,
   source_type STRING NOT NULL,
@@ -61,7 +61,7 @@ CREATE TABLE IF NOT EXISTS `YOUR_PROJECT.bankwise.sources` (
   status STRING NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS `YOUR_PROJECT.bankwise.verification_records` (
+CREATE TABLE IF NOT EXISTS `{{BIGQUERY_PROJECT}}.{{BIGQUERY_DATASET}}.verification_records` (
   id STRING NOT NULL,
   product_id STRING NOT NULL,
   field_name STRING NOT NULL,
@@ -74,7 +74,7 @@ CREATE TABLE IF NOT EXISTS `YOUR_PROJECT.bankwise.verification_records` (
   notes STRING
 );
 
-CREATE TABLE IF NOT EXISTS `YOUR_PROJECT.bankwise.source_conflicts` (
+CREATE TABLE IF NOT EXISTS `{{BIGQUERY_PROJECT}}.{{BIGQUERY_DATASET}}.source_conflicts` (
   id STRING NOT NULL,
   product_id STRING NOT NULL,
   field_name STRING NOT NULL,
