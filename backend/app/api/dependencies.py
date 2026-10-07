@@ -5,7 +5,6 @@ from functools import lru_cache
 from app.repositories.bigquery import BigQueryRepository
 from app.repositories.firestore import FirestoreSessionRepository
 
-
 # Local development repositories (kept here for reference):
 # from app.repositories.local_json import LocalJsonCatalog
 # from app.repositories.memory_sessions import MemorySessionRepository

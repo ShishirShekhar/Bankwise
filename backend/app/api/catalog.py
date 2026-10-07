@@ -9,6 +9,7 @@ from app.calculators.fd import CalculationError, calculate_fd
 from app.domain.catalog import product_payload
 from app.domain.comparison import compare_products
 from app.domain.sources import rate_is_usable
+
 # from app.repositories.local_json import LocalJsonCatalog
 from app.repositories.bigquery import BigQueryRepository
 from app.schemas import CompareRequest, FDCalculationRequest

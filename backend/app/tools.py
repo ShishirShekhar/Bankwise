@@ -2,12 +2,12 @@
 
 from datetime import date, datetime
 
+# from app.repositories.local_json import LocalJsonCatalog
+from app.api.dependencies import get_catalog
 from app.calculators.fd import CalculationError, calculate_fd
 from app.domain.catalog import product_payload
 from app.domain.input import extract_requirements
 from app.domain.sources import freshness, rate_is_usable
-# from app.repositories.local_json import LocalJsonCatalog
-from app.api.dependencies import get_catalog
 
 
 def _isoformat(value):

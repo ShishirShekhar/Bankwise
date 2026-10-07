@@ -13,6 +13,7 @@ from app.config import (
     GOOGLE_CLOUD_PROJECT,
 )
 from app.domain.sources import freshness, rate_is_usable
+
 # from app.repositories.local_json import DATA_FILE, LocalJsonCatalog
 from app.repositories.bigquery import BigQueryRepository
 from app.schemas import HealthResponse

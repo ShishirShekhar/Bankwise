@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends
 from app.ai.ask_response import to_ask_response
 from app.ai.decision_workflow import run_decision_workflow
 from app.api.dependencies import get_catalog, get_sessions
+
 # from app.repositories.local_json import LocalJsonCatalog
 # from app.repositories.memory_sessions import MemorySessionRepository
 from app.repositories.bigquery import BigQueryRepository
