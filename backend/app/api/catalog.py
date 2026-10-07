@@ -7,9 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from app.api.dependencies import get_catalog
 from app.domain.catalog import product_payload
 from app.domain.comparison import compare_products
-
 from app.domain.rates import calculate_product_fd
-from app.domain.sources import rate_is_usable
 
 # from app.repositories.local_json import LocalJsonCatalog
 from app.repositories.bigquery import BigQueryRepository

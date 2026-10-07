@@ -135,7 +135,8 @@ def test_eval_set_is_valid_adk_schema():
     eval_set = AgentEvaluator._load_eval_set_from_file(str(EVAL_FILE), {}, {})
 
     assert len(eval_set.eval_cases) == len(_eval_cases()) >= 4
-    assert AgentEvaluator.find_config_for_test_file(str(EVAL_FILE)) == {
+    config = AgentEvaluator.find_config_for_test_file(str(EVAL_FILE))
+    assert config.model_dump(exclude_none=True)["criteria"] == {
         "tool_trajectory_avg_score": 1.0,
         "response_match_score": 0.5,
     }

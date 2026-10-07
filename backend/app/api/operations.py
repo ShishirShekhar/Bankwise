@@ -21,6 +21,7 @@ from app.domain.sources import (
     source_is_stale,
     source_issues,
 )
+
 # from app.repositories.local_json import DATA_FILE, LocalJsonCatalog
 from app.repositories.bigquery import BigQueryRepository
 from app.schemas import HealthResponse
@@ -88,7 +89,8 @@ def verification_run(
 
 @router.get("/api/conflicts")
 def list_conflicts(
-    catalog: Annotated[LocalJsonCatalog, Depends(get_catalog)],
+    # catalog: Annotated[LocalJsonCatalog, Depends(get_catalog)],
+    catalog: Annotated[BigQueryRepository, Depends(get_catalog)],
     status: str = OPEN,
 ):
     """Source conflicts for the UI/admin; OPEN ones block the disputed value."""
