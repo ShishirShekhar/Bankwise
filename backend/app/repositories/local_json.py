@@ -11,6 +11,7 @@ from app.domain.conflicts import (
     detect_conflicts,
     normalize_value,
 )
+from app.domain.models import Bank, Product
 
 DATA_FILE = Path(__file__).resolve().parents[2] / "data" / "fd-products.json"
 _BANK_ALIASES = {"sbi": "State Bank of India"}
@@ -67,6 +68,7 @@ class LocalJsonCatalog:
             data = json.load(file)
         rows = data.get("products", [])
         source_metadata = data.get("source_metadata", {})
+        self._banks: dict[str, Bank] = {}
         self._products: dict[str, dict] = {}
         self._sources: dict[str, dict] = {}
         self._conflicts: dict[str, list] = {}
@@ -75,6 +77,8 @@ class LocalJsonCatalog:
         for row in rows:
             raw_bank = row["bank_name"].strip()
             bank = _BANK_ALIASES.get(raw_bank.lower(), raw_bank)
+            bank_id = _slug(bank)
+            self._banks.setdefault(bank_id, Bank(id=bank_id, name=bank))
             product_id = _slug(f"{bank}-{row['product_name']}")
             source_id = _slug(row["source_name"])
             source_reference = row.get("source_reference")
@@ -106,6 +110,7 @@ class LocalJsonCatalog:
                 product_id,
                 {
                     "id": product_id,
+                    "bank_id": bank_id,
                     "bank": bank,
                     "category": row.get("product_type", "FD").upper(),
                     "name": row["product_name"],
@@ -213,6 +218,9 @@ class LocalJsonCatalog:
 
         # Conflicts recorded by hand in the dataset (for example overlapping
         # tenure bands) apply to every rate of the field for that product.
+        for product in self._products.values():
+            Product.from_row(product)
+
         for record in data.get("source_conflicts", []):
             product_id = self._product_id(record)
             conflict = {
@@ -249,6 +257,11 @@ class LocalJsonCatalog:
             if c["condition_type"] != conflict["field_name"]
             or normalize_value(c["condition_value"]) not in rejected
         ]
+    def list_banks(self, status: str = "ACTIVE") -> list[Bank]:
+        return [bank for bank in self._banks.values() if bank.status == status]
+
+    def get_bank(self, bank_id: str) -> Bank | None:
+        return self._banks.get(bank_id)
 
     def list_products(self, category: str = "FD", status: str = "ACTIVE") -> list[dict]:
         return [

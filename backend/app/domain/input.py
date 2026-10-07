@@ -9,46 +9,95 @@ from app.config import GEMINI_MODEL
 from app.schemas import Requirements
 
 _SENSITIVE_LABEL = re.compile(
-    r"\b(?:PAN|Aadhaar|account number|card number|CVV|UPI PIN|banking password)\b",
+    r"\b(?:PAN|Aadhaa?r|account|acct|a/c|card|CVV|CVC|UPI|MPIN|PIN|OTP"
+    r"|(?:net\s?)?banking\s+password|password|passcode)(?!\w)",
     re.IGNORECASE,
 )
-_SENSITIVE_VALUE = re.compile(r"[A-Z0-9-]{4,}", re.IGNORECASE)
+# Words that may sit between a label and its value, e.g. "account no. is: 1234".
+_LABEL_FILLERS = {"number", "no", "no.", "num", "id", "is", "pin", ":", "=", "-", "#"}
+_FREE_TEXT_LABELS = ("password", "passcode")
 _PAN_VALUE = re.compile(r"\b[A-Z]{5}[0-9]{4}[A-Z]\b", re.IGNORECASE)
+# UPI IDs (name@bank) and email addresses; bounded to keep matching linear.
+_HANDLE_VALUE = re.compile(r"\b[\w.-]{1,64}@[A-Za-z][\w.-]{1,63}")
+_REDACTED = "[REDACTED]"
+
+
+def _skip_spaces(text: str, index: int) -> int:
+    while index < len(text) and text[index].isspace():
+        index += 1
+    return index
+
+
+def _scan_grouped_digits(text: str, index: int) -> tuple[int, int]:
+    """Return (end, digit_count) for digits joined by single spaces or hyphens."""
+    end, digits = index, 0
+    while end < len(text) and text[end].isdigit():
+        digits += 1
+        end += 1
+        if end + 1 < len(text) and text[end] in " -" and text[end + 1].isdigit():
+            end += 1
+    return end, digits
+
+
+def _labelled_value_end(text: str, label_end: int, free_text: bool) -> int | None:
+    """End index of the secret that follows a label, or None if none follows."""
+    index = _skip_spaces(text, label_end)
+    for _ in range(4):
+        word_end = index
+        while word_end < len(text) and not text[word_end].isspace():
+            word_end += 1
+        word = text[index:word_end].lower()
+        if word in _LABEL_FILLERS or word.rstrip(":=#-") in _LABEL_FILLERS:
+            index = _skip_spaces(text, word_end)
+        elif word[:1] in (":", "=", "-", "#") and len(word) > 1:
+            index += 1
+        else:
+            break
+    if index < len(text) and text[index].isdigit():
+        end, _ = _scan_grouped_digits(text, index)
+    else:
+        end = index
+        while end < len(text) and not text[end].isspace():
+            end += 1
+        while end > index and text[end - 1] in ".,;)":
+            end -= 1
+        token = text[index:end]
+        if not free_text and not any(ch.isdigit() or ch == "@" for ch in token):
+            return None
+    return end if end - index >= 3 else None
 
 
 def redact_sensitive_input(query: str) -> str:
-    """Remove common credential/identity values before sending free text to a model."""
-    # Match labels separately, then scan whitespace and the optional delimiter once.
-    # This avoids ambiguous unbounded repetitions in a regex over user-controlled text.
+    """Remove identity, account, card, and credential values before any model call.
+
+    Labelled values (``PAN``, ``Aadhaar``, ``account no.``, ``card``, ``CVV``,
+    ``UPI ID/PIN``, ``MPIN``, ``OTP``, ``PIN``, ``password``) are redacted with
+    their label. PAN-shaped codes, 12-19 digit numbers (Aadhaar and card
+    numbers), and UPI IDs or email addresses are redacted anywhere. All scans
+    are linear in the input length.
+    """
     parts = []
     cursor = 0
     for label in _SENSITIVE_LABEL.finditer(query):
-        value_start = label.end()
-        while value_start < len(query) and query[value_start].isspace():
-            value_start += 1
-        if query[value_start : value_start + 2].lower() == "is" and (
-            value_start + 2 == len(query) or not query[value_start + 2].isalnum()
-        ):
-            value_start += 2
-        elif value_start < len(query) and query[value_start] in ":=":
-            value_start += 1
-        while value_start < len(query) and query[value_start].isspace():
-            value_start += 1
-        value = _SENSITIVE_VALUE.match(query, value_start)
-        if value and value.end() - value.start() >= 4:
-            parts.extend((query[cursor : label.start()], "[REDACTED]"))
-            cursor = value.end()
+        if label.start() < cursor:
+            continue
+        free_text = label.group().lower().endswith(_FREE_TEXT_LABELS)
+        value_end = _labelled_value_end(query, label.end(), free_text)
+        if value_end is not None:
+            parts.extend((query[cursor : label.start()], _REDACTED))
+            cursor = value_end
     if parts:
         parts.append(query[cursor:])
         redacted = "".join(parts)
     else:
         redacted = query
-    redacted = _PAN_VALUE.sub("[REDACTED]", redacted)
+    redacted = _PAN_VALUE.sub(_REDACTED, redacted)
+    redacted = _HANDLE_VALUE.sub(_REDACTED, redacted)
     return _redact_long_numbers(redacted)
 
 
 def _redact_long_numbers(text: str) -> str:
-    """Redact 12- or 16-digit values, scanning digits and separators linearly."""
+    """Redact 12-19 digit values (Aadhaar, card numbers), scanning linearly."""
     parts = []
     cursor = 0
     index = 0
@@ -57,24 +106,11 @@ def _redact_long_numbers(text: str) -> str:
             index += 1
             continue
         start = index
-        end = index
-        digits = 0
-        while end < len(text) and text[end].isdigit():
-            digits += 1
-            end += 1
-            if (
-                end < len(text)
-                and text[end] in " -"
-                and end + 1 < len(text)
-                and text[end + 1].isdigit()
-            ):
-                end += 1
-        if digits in (12, 16) and (end == len(text) or not text[end].isdigit()):
-            parts.extend((text[cursor:start], "[REDACTED]"))
+        end, digits = _scan_grouped_digits(text, index)
+        if 12 <= digits <= 19:
+            parts.extend((text[cursor:start], _REDACTED))
             cursor = end
-            index = end
-        else:
-            index = max(end, index + 1)
+        index = max(end, index + 1)
     if not parts:
         return text
     parts.append(text[cursor:])
@@ -104,7 +140,9 @@ def extract_requirements(query: str, use_gemini: bool = True) -> Requirements:
         amount *= (
             100000
             if scale.startswith(("lakh", "lac"))
-            else 10000000 if scale.startswith("crore") else 1
+            else 10000000
+            if scale.startswith("crore")
+            else 1
         )
     tenure = None
     years = re.search(r"(\d{1,4}(?:\.\d{1,2})?)\s*years?", query, re.IGNORECASE)

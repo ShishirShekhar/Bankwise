@@ -1,10 +1,11 @@
 """ADK tools for requirement extraction, product research, verification, and calculation."""
 
+# from app.repositories.local_json import LocalJsonCatalog
+from app.api.dependencies import get_catalog
 from app.calculators.fd import CalculationError, calculate_fd
 from app.domain.catalog import conflict_payload, product_payload, source_payload
 from app.domain.input import extract_requirements
 from app.domain.sources import rate_is_usable
-from app.repositories.local_json import LocalJsonCatalog
 
 
 def extract_requirements_tool(query: str) -> dict:
@@ -14,7 +15,8 @@ def extract_requirements_tool(query: str) -> dict:
 
 def search_products_tool(amount: float, tenure_months: int) -> dict:
     """Find FD products for the requested amount and tenure, including source status."""
-    catalog = LocalJsonCatalog()
+    # catalog = LocalJsonCatalog()
+    catalog = get_catalog()
     products = catalog.list_products(category="FD", status="ACTIVE")
     return {
         "products": [
@@ -26,7 +28,8 @@ def search_products_tool(amount: float, tenure_months: int) -> dict:
 
 def verify_product_tool(product_id: str) -> dict:
     """Check stored source freshness and return open conflicts for a product."""
-    catalog = LocalJsonCatalog()
+    # catalog = LocalJsonCatalog()
+    catalog = get_catalog()
     product = catalog.get_product(product_id)
     if not product:
         return {"product_id": product_id, "status": "MISSING"}
@@ -41,7 +44,8 @@ def verify_product_tool(product_id: str) -> dict:
 
 def calculate_fd_tool(product_id: str, principal: float, tenure_months: int) -> dict:
     """Calculate only from one eligible rate backed by a current, conflict-free official source."""
-    catalog = LocalJsonCatalog()
+    # catalog = LocalJsonCatalog()
+    catalog = get_catalog()
     product = catalog.get_product(product_id, category="FD", status="ACTIVE")
     if not product:
         return {"status": "MISSING", "product_id": product_id}

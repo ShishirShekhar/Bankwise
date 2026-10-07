@@ -6,10 +6,10 @@ FastAPI backend for source-grounded FD comparison. Financial calculations live i
 
 - `app/main.py` creates the FastAPI application and registers route modules.
 - `app/api/` contains routers grouped by assistant, catalog/calculation, decision/session, and operational endpoints. Shared repository providers are in `api/dependencies.py`.
-- `app/domain/` contains requirement parsing, source verification, product shaping, comparison, and ID generation. It does not define HTTP routes.
+- `app/domain/` contains requirement parsing, source verification, product shaping, comparison, ID generation, and the validated `Bank`/`Product` models in `domain/models.py` (they mirror the `banks` and `products` tables; `from_row`/`to_row` convert to and from table rows). It does not define HTTP routes.
 - `app/calculators/` contains deterministic financial calculations.
 - `app/ai/` contains Gemini extraction, the conversational pipeline, and AI tool operations.
-- `app/repositories/` contains BigQuery and Firestore access.
+- `app/repositories/` contains BigQuery and Firestore access plus the local JSON catalogue and in-memory sessions. Both catalogues expose `list_banks()` and `get_bank(id)` returning `Bank` models.
 
 `app/services.py` re-exports domain functions for older imports. New code should import directly from the relevant `app.domain` module.
 
@@ -43,6 +43,16 @@ Open `/docs` for the API schema. Copy `.env.example` to `.env` and set `GOOGLE_C
 Gemini requirement extraction uses Vertex AI when `GOOGLE_CLOUD_PROJECT` is configured and explicit fallback parsing otherwise. The decision endpoint invokes a Google ADK `Runner`; its orchestrator has tools for requirement extraction, product search, source verification, and product-backed deterministic calculation. It also receives a request-scoped tool containing the API's verified comparison result before writing the explanation. If Google credentials/project configuration is missing, the API still returns its structured deterministic result and reports `ai.status` as `not_configured`. Check `/api/agent/health` for configuration status. For local Vertex AI calls, configure ADC credentials, set the project/location in `.env`, and enable Vertex AI in that project.
 
 RAG, Cloud Storage ingestion, automated external source fetching, and a curated-data write/import pipeline are not enabled yet. BigQuery access requires permission to create query jobs and read the configured dataset (typically BigQuery Job User plus dataset Data Viewer). Firestore access requires permission to read/write documents (typically Firestore User).
+
+## Data model
+
+[`sql/bigquery_schema.sql`](sql/bigquery_schema.sql) defines the catalogue tables. Each table has an `id` primary key; relationships are declared as BigQuery `NOT ENFORCED` foreign keys, so application code must still validate references.
+
+- `banks` → `products` (`bank_id`)
+- `products` → `sources`, `product_rates`, `product_conditions`, `verification_records`, `source_conflicts` (`product_id`)
+- `sources` → `product_rates`, `product_conditions`, `verification_records` (`source_id`) and `source_conflicts` (`source_a`, `source_b`)
+
+Sources carry the URL, type, title, retrieval/verification timestamps, and effective dates for every financial fact. Rates and conditions carry a `verification_status`. Conflicts keep both observed values and their sources, with an `OPEN`/resolved status and resolution fields. `tests/test_bigquery_schema.py` checks these relationships and provenance columns.
 
 ## Data and trust rules
 
