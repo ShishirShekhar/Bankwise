@@ -1,17 +1,11 @@
 """ADK tools for requirement extraction, product research, verification, and calculation."""
 
-from datetime import date, datetime
-
 # from app.repositories.local_json import LocalJsonCatalog
 from app.api.dependencies import get_catalog
 from app.calculators.fd import CalculationError, calculate_fd
-from app.domain.catalog import product_payload
+from app.domain.catalog import product_payload, source_payload
 from app.domain.input import extract_requirements
-from app.domain.sources import freshness, rate_is_usable
-
-
-def _isoformat(value):
-    return value.isoformat() if isinstance(value, (date, datetime)) else value
+from app.domain.sources import rate_is_usable
 
 
 def extract_requirements_tool(query: str) -> dict:
@@ -53,18 +47,7 @@ def verify_product_tool(product_id: str) -> dict:
             }
             for c in conflicts
         ],
-        "sources": [
-            {
-                "id": s["id"],
-                "title": s["title"],
-                "url": s["url"],
-                "reference": s.get("reference"),
-                "verified_at": _isoformat(s.get("verified_at")),
-                "effective_from": _isoformat(s.get("effective_from")),
-                "freshness": freshness(s),
-            }
-            for s in product["sources"]
-        ],
+        "sources": [source_payload(s) for s in product["sources"]],
     }
 
 
