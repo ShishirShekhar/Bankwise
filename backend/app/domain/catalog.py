@@ -37,6 +37,28 @@ def source_payload(source: dict) -> dict:
     }
 
 
+def conflict_payload(conflict: dict) -> dict:
+    """Both observed values and sources, so a conflict can be shown, not hidden."""
+    return {
+        "id": conflict["id"],
+        "product_id": conflict.get("product_id"),
+        "field": conflict["field_name"],
+        "key": conflict.get("key"),
+        "rate_id": conflict.get("rate_id"),
+        "value_a": conflict.get("value_a"),
+        "source_a": conflict.get("source_a"),
+        "value_b": conflict.get("value_b"),
+        "source_b": conflict.get("source_b"),
+        "source_b_url": conflict.get("source_b_url"),
+        "note": conflict.get("note"),
+        "status": conflict.get("status"),
+        "detected_at": _isoformat(conflict.get("detected_at")),
+        "resolved_value": conflict.get("resolved_value"),
+        "resolved_at": _isoformat(conflict.get("resolved_at")),
+        "resolution_notes": conflict.get("resolution_notes"),
+    }
+
+
 def condition_payload(condition: dict, catalog, product_id: str) -> dict:
     status, reason = condition_verification(catalog, product_id, condition)
     source = catalog.get_source(condition.get("source_id"))
@@ -109,16 +131,7 @@ def product_payload(
         ],
         "sources": [source_payload(s) for s in product.get("sources", [])],
         "conflicts": [
-            {
-                "id": conflict["id"],
-                "field": conflict["field_name"],
-                "value_a": conflict.get("value_a"),
-                "source_a": conflict.get("source_a"),
-                "value_b": conflict.get("value_b"),
-                "source_b": conflict.get("source_b"),
-                "source_b_url": conflict.get("source_b_url"),
-                "note": conflict.get("note"),
-            }
+            conflict_payload(conflict)
             for conflict in catalog.get_conflicts(product["id"])
         ],
     }

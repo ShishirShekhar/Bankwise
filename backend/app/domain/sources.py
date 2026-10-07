@@ -82,7 +82,13 @@ def freshness(source: dict) -> str:
 
 def _verify_fact(catalog, product_id: str, field_name: str, fact: dict, label: str):
     """Shared checks for a sourced fact. Returns (status, reason or None)."""
-    if catalog.get_conflicts(product_id, field_name=field_name):
+    conflicts = [
+        conflict
+        for conflict in catalog.get_conflicts(product_id, field_name=field_name)
+        # Detected rate conflicts name the disputed band; others apply to all.
+        if not conflict.get("rate_id") or conflict["rate_id"] == fact.get("id")
+    ]
+    if conflicts:
         return VerificationStatus.CONFLICT, f"{label} has an unresolved source conflict"
     source_id = fact.get("source_id")
     source = catalog.get_source(source_id) if source_id else None

@@ -3,7 +3,7 @@
 from importlib.util import find_spec
 from typing import Annotated
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 
 from app.api.dependencies import get_catalog
 from app.config import (
@@ -12,6 +12,8 @@ from app.config import (
     GEMINI_MODEL,
     GOOGLE_CLOUD_PROJECT,
 )
+from app.domain.catalog import conflict_payload
+from app.domain.conflicts import OPEN, RESOLVED
 from app.domain.sources import (
     condition_verification,
     freshness,
@@ -82,6 +84,21 @@ def verification_run(
                 }
             )
     return {"checked": len(reports), "records": reports, "web_fetch_performed": False}
+
+
+@router.get("/api/conflicts")
+def list_conflicts(
+    catalog: Annotated[LocalJsonCatalog, Depends(get_catalog)],
+    status: str = OPEN,
+):
+    """Source conflicts for the UI/admin; OPEN ones block the disputed value."""
+    status = status.upper()
+    if status not in (OPEN, RESOLVED):
+        raise HTTPException(422, "status must be OPEN or RESOLVED")
+    return {
+        "status": status,
+        "conflicts": [conflict_payload(c) for c in catalog.list_conflicts(status)],
+    }
 
 
 def _installed(module: str) -> bool:
