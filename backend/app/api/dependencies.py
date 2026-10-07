@@ -1,15 +1,26 @@
-"""Shared local development dependencies for API routes."""
+"""Shared cloud repository dependencies for API routes and agent tools."""
 
-from app.repositories.local_json import LocalJsonCatalog
-from app.repositories.memory_sessions import MemorySessionRepository
+from functools import lru_cache
 
-_catalog = LocalJsonCatalog()
-_sessions = MemorySessionRepository()
-
-
-def get_catalog():
-    return _catalog
+from app.repositories.bigquery import BigQueryRepository
+from app.repositories.firestore import FirestoreSessionRepository
 
 
-def get_sessions():
-    return _sessions
+# Local development repositories (kept here for reference):
+# from app.repositories.local_json import LocalJsonCatalog
+# from app.repositories.memory_sessions import MemorySessionRepository
+#
+# _catalog = LocalJsonCatalog()
+# _sessions = MemorySessionRepository()
+
+
+@lru_cache(maxsize=1)
+def get_catalog() -> BigQueryRepository:
+    """Use the verified product catalogue stored in BigQuery."""
+    return BigQueryRepository()
+
+
+@lru_cache(maxsize=1)
+def get_sessions() -> FirestoreSessionRepository:
+    """Persist redacted decision sessions in Firestore."""
+    return FirestoreSessionRepository()
