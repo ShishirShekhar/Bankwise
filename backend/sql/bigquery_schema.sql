@@ -1,4 +1,4 @@
--- Apply with `python -m scripts.apply_bigquery_schema` from backend/.
+-- Applied by `python -m scripts.create_bigquery_dataset` from backend/.
 -- Project, dataset, and location are loaded from backend/.env via app.config.
 CREATE SCHEMA IF NOT EXISTS `{{BIGQUERY_PROJECT}}.{{BIGQUERY_DATASET}}` OPTIONS(location="{{BIGQUERY_LOCATION}}");
 
