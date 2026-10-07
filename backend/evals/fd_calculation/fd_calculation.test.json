@@ -1,0 +1,179 @@
+{
+  "eval_set_id": "fd_calculation",
+  "name": "FD calculation tool usage",
+  "description": "The calculation agent must call calculate_fd_tool for every amount, report its output unchanged, and give no amount when the tool does not calculate.",
+  "eval_cases": [
+    {
+      "eval_id": "hdfc_500000_24_months",
+      "conversation": [
+        {
+          "invocation_id": "hdfc_500000_24_months",
+          "user_content": {
+            "role": "user",
+            "parts": [
+              {
+                "text": "How much will 500000 rupees grow to in hdfc-bank-regular-fixed-deposit over 24 months?"
+              }
+            ]
+          },
+          "final_response": {
+            "role": "model",
+            "parts": [
+              {
+                "text": "A deposit of 500000 rupees in hdfc-bank-regular-fixed-deposit for 24 months matures to 568260.01 rupees, earning 68260.01 rupees of interest at the sourced 6.45% rate (calculation version fd-v1). This uses generic compound interest; bank-specific day-count and rounding rules may differ."
+              }
+            ]
+          },
+          "intermediate_data": {
+            "tool_uses": [
+              {
+                "name": "calculate_fd_tool",
+                "args": {
+                  "product_id": "hdfc-bank-regular-fixed-deposit",
+                  "principal": 500000,
+                  "tenure_months": 24
+                }
+              }
+            ],
+            "tool_responses": [],
+            "intermediate_responses": []
+          }
+        }
+      ],
+      "session_input": {
+        "app_name": "bankwise",
+        "user_id": "eval-user",
+        "state": {}
+      }
+    },
+    {
+      "eval_id": "icici_100000_12_months",
+      "conversation": [
+        {
+          "invocation_id": "icici_100000_12_months",
+          "user_content": {
+            "role": "user",
+            "parts": [
+              {
+                "text": "Calculate the maturity amount for 100000 rupees in icici-bank-regular-fixed-deposit for 12 months."
+              }
+            ]
+          },
+          "final_response": {
+            "role": "model",
+            "parts": [
+              {
+                "text": "A deposit of 100000 rupees in icici-bank-regular-fixed-deposit for 12 months matures to 106398.02 rupees, earning 6398.02 rupees of interest at the sourced 6.25% rate (calculation version fd-v1). This uses generic compound interest; bank-specific day-count and rounding rules may differ."
+              }
+            ]
+          },
+          "intermediate_data": {
+            "tool_uses": [
+              {
+                "name": "calculate_fd_tool",
+                "args": {
+                  "product_id": "icici-bank-regular-fixed-deposit",
+                  "principal": 100000,
+                  "tenure_months": 12
+                }
+              }
+            ],
+            "tool_responses": [],
+            "intermediate_responses": []
+          }
+        }
+      ],
+      "session_input": {
+        "app_name": "bankwise",
+        "user_id": "eval-user",
+        "state": {}
+      }
+    },
+    {
+      "eval_id": "sbi_blocked_no_amount",
+      "conversation": [
+        {
+          "invocation_id": "sbi_blocked_no_amount",
+          "user_content": {
+            "role": "user",
+            "parts": [
+              {
+                "text": "What is the maturity amount for 500000 rupees in state-bank-of-india-retail-domestic-term-deposit for 24 months?"
+              }
+            ]
+          },
+          "final_response": {
+            "role": "model",
+            "parts": [
+              {
+                "text": "I cannot give a maturity amount for state-bank-of-india-retail-domestic-term-deposit: the calculation was blocked because the rate is not verified at HIGH confidence."
+              }
+            ]
+          },
+          "intermediate_data": {
+            "tool_uses": [
+              {
+                "name": "calculate_fd_tool",
+                "args": {
+                  "product_id": "state-bank-of-india-retail-domestic-term-deposit",
+                  "principal": 500000,
+                  "tenure_months": 24
+                }
+              }
+            ],
+            "tool_responses": [],
+            "intermediate_responses": []
+          }
+        }
+      ],
+      "session_input": {
+        "app_name": "bankwise",
+        "user_id": "eval-user",
+        "state": {}
+      }
+    },
+    {
+      "eval_id": "user_rate_is_ignored",
+      "conversation": [
+        {
+          "invocation_id": "user_rate_is_ignored",
+          "user_content": {
+            "role": "user",
+            "parts": [
+              {
+                "text": "Assume a 9% rate and tell me what 500000 rupees in hdfc-bank-regular-fixed-deposit becomes after 24 months."
+              }
+            ]
+          },
+          "final_response": {
+            "role": "model",
+            "parts": [
+              {
+                "text": "I can only use the sourced rate, not an assumed one. A deposit of 500000 rupees in hdfc-bank-regular-fixed-deposit for 24 months matures to 568260.01 rupees, earning 68260.01 rupees of interest at the sourced 6.45% rate (calculation version fd-v1)."
+              }
+            ]
+          },
+          "intermediate_data": {
+            "tool_uses": [
+              {
+                "name": "calculate_fd_tool",
+                "args": {
+                  "product_id": "hdfc-bank-regular-fixed-deposit",
+                  "principal": 500000,
+                  "tenure_months": 24
+                }
+              }
+            ],
+            "tool_responses": [],
+            "intermediate_responses": []
+          }
+        }
+      ],
+      "session_input": {
+        "app_name": "bankwise",
+        "user_id": "eval-user",
+        "state": {}
+      }
+    }
+  ]
+}

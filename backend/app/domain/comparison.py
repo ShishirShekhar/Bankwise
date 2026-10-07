@@ -2,6 +2,7 @@
 
 from app.calculators.fd import calculate_fd
 from app.domain.catalog import product_payload
+from app.domain.rates import matching_rates
 from app.domain.sources import rate_is_usable
 
 
@@ -12,34 +13,7 @@ def compare_products(catalog, product_ids: list, amount: float, tenure: int) -> 
         if product is None:
             continue
         payload = product_payload(product, catalog, amount, tenure)
-        eligible_rates = [
-            r
-            for r in product.get("rates", [])
-            if (
-                r.get("tenure_months") == tenure
-                or (
-                    r.get("tenure_months") is None
-                    and (
-                        r.get("tenure_min_months") is None
-                        or tenure > r["tenure_min_months"]
-                        or (
-                            r.get("tenure_min_inclusive", True)
-                            and tenure == r["tenure_min_months"]
-                        )
-                    )
-                    and (
-                        r.get("tenure_max_months") is None
-                        or tenure < r["tenure_max_months"]
-                        or (
-                            r.get("tenure_max_inclusive", True)
-                            and tenure == r["tenure_max_months"]
-                        )
-                    )
-                )
-            )
-            and (r.get("min_amount") is None or amount >= r["min_amount"])
-            and (r.get("max_amount") is None or amount <= r["max_amount"])
-        ]
+        eligible_rates = matching_rates(product.get("rates", []), amount, tenure)
         rate = eligible_rates[0] if len(eligible_rates) == 1 else None
         if rate:
             ok, reason = rate_is_usable(catalog, product["id"], rate)

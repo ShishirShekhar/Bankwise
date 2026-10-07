@@ -58,6 +58,15 @@ Sources carry the URL, type, title, retrieval/verification timestamps, and effec
 
 `everything.md` requires official source URLs, retrieval/verification timestamps, effective dates, confidence, and conflict visibility. No bank rate seed values are included because no official source records were supplied. Open conflicts block calculations. Generic compound interest is labeled with a warning and should be replaced with documented bank-specific conventions when those are known.
 
+## FD calculation tool and agent evaluations
+
+`app/domain/rates.py` selects a product's single eligible rate band and runs the deterministic calculator. The ADK `calculate_fd_tool`, `POST /api/calculations/fd`, and the comparison all use it, so the agent can never show an amount the comparison would refuse. The tool returns `status` `CALCULATED` with the calculator `result` unchanged (including `calculation_version`), or `INVALID_INPUT`, `MISSING`, `UNAVAILABLE`, `BLOCKED`, or `UNSUPPORTED` with a `reason` and no amount.
+
+`evals/fd_calculation/` is an ADK evaluation set for the production calculation agent: each case expects a `calculate_fd_tool` call with exact arguments and an answer whose numbers come from the calculator (one case asks the agent to "assume 9%", one is a blocked product). `tests/test_fd_calculation_tool.py` checks the eval file against the calculator in CI without calling Gemini. To run the eval against Gemini, configure Vertex AI credentials and run:
+
+```sh
+RUN_AGENT_EVALS=1 GOOGLE_CLOUD_PROJECT=your-project python -m pytest tests/test_fd_calculation_tool.py -k eval_with_gemini
+```
 ### Source metadata
 
 Every source returned by the API (`/api/products/{id}` and `/api/products/{id}/sources`) and by the ADK verification tool includes its URL, type, title, reference, `retrieved_at`, `verified_at`, effective dates, `confidence`, and `verification_status`. Rules live in `app/domain/sources.py`:

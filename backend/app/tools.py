@@ -1,11 +1,19 @@
 """ADK tools for requirement extraction, product research, verification, and calculation."""
 
+
+from datetime import date, datetime
+
+from app.domain.rates import calculate_product_fd
+from app.domain.sources import freshness
 # from app.repositories.local_json import LocalJsonCatalog
 from app.api.dependencies import get_catalog
 from app.calculators.fd import CalculationError, calculate_fd
 from app.domain.catalog import conflict_payload, product_payload, source_payload
 from app.domain.input import extract_requirements
 from app.domain.sources import rate_is_usable
+
+def _isoformat(value):
+    return value.isoformat() if isinstance(value, (date, datetime)) else value
 
 
 def extract_requirements_tool(query: str) -> dict:
@@ -43,6 +51,28 @@ def verify_product_tool(product_id: str) -> dict:
 
 
 def calculate_fd_tool(product_id: str, principal: float, tenure_months: int) -> dict:
+    """Calculate FD maturity with Bankwise's deterministic calculator.
+
+    Always call this tool for maturity amounts or interest earned; never do the
+    arithmetic yourself. It uses only the product's single eligible rate band
+    backed by a current, conflict-free official source.
+
+    Args:
+        product_id: Bankwise FD product id from search_products_tool, for
+            example "hdfc-bank-regular-fixed-deposit".
+        principal: Deposit amount in Indian rupees, for example 500000.
+        tenure_months: Deposit tenure in whole months, for example 24.
+
+    Returns:
+        A dict with ``status``. CALCULATED includes ``result`` exactly as the
+        calculator returned it (maturity_amount, interest_earned,
+        calculation_version, warnings). INVALID_INPUT, MISSING, UNAVAILABLE,
+        BLOCKED, and UNSUPPORTED include a ``reason``; report it instead of a
+        number.
+    """
+    return calculate_product_fd(
+        LocalJsonCatalog(), product_id, principal, tenure_months
+    )
     """Calculate only from one eligible rate backed by a current, conflict-free official source."""
     # catalog = LocalJsonCatalog()
     catalog = get_catalog()
