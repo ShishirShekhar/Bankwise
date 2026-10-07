@@ -2,11 +2,75 @@
 
 from datetime import date, datetime
 
-from app.domain.sources import freshness, rate_is_usable
+from app.domain.sources import (
+    VerificationStatus,
+    condition_verification,
+    freshness,
+    rate_verification,
+    source_confidence,
+    source_is_stale,
+    source_issues,
+)
 
 
 def _isoformat(value):
     return value.isoformat() if isinstance(value, (date, datetime)) else value
+
+
+def source_payload(source: dict) -> dict:
+    """Provenance shown for a source wherever it is returned by the API or tools."""
+    return {
+        "id": source["id"],
+        "type": source["source_type"],
+        "url": source["url"],
+        "title": source["title"],
+        "reference": source.get("reference"),
+        "retrieved_at": _isoformat(source.get("retrieved_at")),
+        "verified_at": _isoformat(source.get("verified_at")),
+        "effective_from": _isoformat(source.get("effective_from")),
+        "effective_to": _isoformat(source.get("effective_to")),
+        "confidence": source_confidence(source),
+        "verification_status": freshness(source),
+        "freshness": freshness(source),
+        "stale": source_is_stale(source),
+        "verification_issues": source_issues(source),
+    }
+
+
+def conflict_payload(conflict: dict) -> dict:
+    """Both observed values and sources, so a conflict can be shown, not hidden."""
+    return {
+        "id": conflict["id"],
+        "product_id": conflict.get("product_id"),
+        "field": conflict["field_name"],
+        "key": conflict.get("key"),
+        "rate_id": conflict.get("rate_id"),
+        "value_a": conflict.get("value_a"),
+        "source_a": conflict.get("source_a"),
+        "value_b": conflict.get("value_b"),
+        "source_b": conflict.get("source_b"),
+        "source_b_url": conflict.get("source_b_url"),
+        "note": conflict.get("note"),
+        "status": conflict.get("status"),
+        "detected_at": _isoformat(conflict.get("detected_at")),
+        "resolved_value": conflict.get("resolved_value"),
+        "resolved_at": _isoformat(conflict.get("resolved_at")),
+        "resolution_notes": conflict.get("resolution_notes"),
+    }
+
+
+def condition_payload(condition: dict, catalog, product_id: str) -> dict:
+    status, reason = condition_verification(catalog, product_id, condition)
+    source = catalog.get_source(condition.get("source_id"))
+    return {
+        "type": condition["condition_type"],
+        "value": condition["condition_value"],
+        "verification_status": status,
+        "source_id": condition.get("source_id"),
+        "source_url": condition.get("source_url") or (source or {}).get("url"),
+        "verified": status == VerificationStatus.HIGH,
+        "unverified_reason": reason,
+    }
 
 
 def product_payload(
@@ -27,7 +91,7 @@ def product_payload(
             or (max_tenure is not None and tenure > max_tenure)
         ):
             eligible = False
-        usable, reason = rate_is_usable(catalog, product["id"], rate)
+        status, reason = rate_verification(catalog, product["id"], rate)
         rates.append(
             {
                 "id": rate["id"],
@@ -43,12 +107,9 @@ def product_payload(
                 "source_id": rate.get("source_id"),
                 "effective_from": _isoformat(rate.get("effective_from")),
                 "effective_to": _isoformat(rate.get("effective_to")),
-                "verification_status": (
-                    "CONFLICT"
-                    if not usable and reason and "conflict" in reason.lower()
-                    else rate.get("verification_status")
-                ),
-                "usable_for_calculation": usable,
+                "verification_status": status,
+                "verification_reason": reason,
+                "usable_for_calculation": status == VerificationStatus.HIGH,
                 "ineligibility_reason": (
                     None
                     if eligible
@@ -65,39 +126,12 @@ def product_payload(
         "status": product["status"],
         "rates": rates,
         "conditions": [
-            {
-                "type": c["condition_type"],
-                "value": c["condition_value"],
-                "verification_status": c.get("verification_status"),
-                "source_url": c.get("source_url"),
-            }
+            condition_payload(c, catalog, product["id"])
             for c in product.get("conditions", [])
         ],
-        "sources": [
-            {
-                "id": s["id"],
-                "type": s["source_type"],
-                "url": s["url"],
-                "title": s["title"],
-                "reference": s.get("reference"),
-                "retrieved_at": _isoformat(s.get("retrieved_at")),
-                "verified_at": _isoformat(s.get("verified_at")),
-                "effective_from": _isoformat(s.get("effective_from")),
-                "freshness": freshness(s),
-            }
-            for s in product.get("sources", [])
-        ],
+        "sources": [source_payload(s) for s in product.get("sources", [])],
         "conflicts": [
-            {
-                "id": conflict["id"],
-                "field": conflict["field_name"],
-                "value_a": conflict.get("value_a"),
-                "source_a": conflict.get("source_a"),
-                "value_b": conflict.get("value_b"),
-                "source_b": conflict.get("source_b"),
-                "source_b_url": conflict.get("source_b_url"),
-                "note": conflict.get("note"),
-            }
+            conflict_payload(conflict)
             for conflict in catalog.get_conflicts(product["id"])
         ],
     }

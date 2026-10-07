@@ -4,6 +4,7 @@ import re
 from typing import Any
 
 from app.config import BIGQUERY_DATASET, BIGQUERY_LOCATION, BIGQUERY_PROJECT
+from app.domain.models import Bank
 
 
 class BigQueryRepository:
@@ -53,6 +54,20 @@ class BigQueryRepository:
             ).result()
         )
         return dict(rows[0].items()) if rows else None
+
+    def list_banks(self, status: str = "ACTIVE") -> list[Bank]:
+        from google.cloud import bigquery
+
+        rows = self._rows(
+            "banks",
+            "WHERE status=@status ORDER BY name",
+            [bigquery.ScalarQueryParameter("status", "STRING", status)],
+        )
+        return [Bank.from_row(row) for row in rows]
+
+    def get_bank(self, bank_id: str) -> Bank | None:
+        row = self._one("banks", bank_id)
+        return Bank.from_row(row) if row else None
 
     def list_products(
         self, category: str = "FD", status: str = "ACTIVE"

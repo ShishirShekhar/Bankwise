@@ -7,7 +7,23 @@ export type Source = {
   retrieved_at?: string | null;
   verified_at?: string | null;
   effective_from?: string | null;
+  effective_to?: string | null;
+  confidence?: string | null;
+  verification_status?: string | null;
   freshness?: string | null;
+};
+
+/** Output of the backend's deterministic FD calculator, passed through unchanged. */
+export type FDCalculation = {
+  principal: number;
+  annual_rate_percent: number;
+  tenure_months: number;
+  compounding_frequency_per_year: number;
+  interest_earned: number;
+  maturity_amount: number;
+  currency: string;
+  calculation_version: string;
+  warnings: string[];
 };
 
 export type AskOption = {
@@ -29,6 +45,7 @@ export type AskOption = {
   source: Source;
   calculation_source_url: string | null;
   penalty_source_url: string | null;
+  calculation?: FDCalculation | null;
 };
 
 export type AskResponse = {
