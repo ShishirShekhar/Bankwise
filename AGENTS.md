@@ -44,9 +44,18 @@ Never invent:
 - Product conditions
 - Effective dates
 
-Every important financial fact must have source metadata.
+Every important financial fact must have source metadata (`url`, `retrieved_at`, `verified_at`, `confidence`).
 
-### 3. Sources
+### 3. Core Differentiator: "What Am I Giving Up?"
+
+Do not simply compare headline rates or declare a single "best" bank.
+
+The core differentiator is explaining the actual trade-offs:
+- For every product option, determine concrete **gains** (e.g., higher maturity by ₹X, lower penalty) and **give-ups** (e.g., ₹X lower maturity compared to top earner, less flexible early withdrawal).
+- Always surface this trade-off matrix in the API response and UI.
+- Never let Gemini replace or overwrite these deterministic trade-off metrics.
+
+### 4. Sources
 
 Prefer:
 
@@ -57,7 +66,7 @@ Prefer:
 
 Search snippets must not be treated as authoritative financial data.
 
-### 4. Conflicting data
+### 5. Conflicting data
 
 If two relevant sources disagree:
 
@@ -67,7 +76,7 @@ If two relevant sources disagree:
 - Prevent the disputed value from being used as authoritative.
 - Surface the conflict to the user/admin.
 
-### 5. AI
+### 6. AI & Explanation Quality
 
 Gemini may:
 
@@ -85,9 +94,15 @@ Gemini must not:
 - Hide source conflicts
 - Present unsupported recommendations as facts
 
-### 6. Privacy
+#### AI Explanation Layout
+Whenever Gemini generates a decision explanation, it must follow a structured 3-part layout:
+1. **Executive Decision Summary**: Tailored to the user's specific amount, duration, and liquidity preference.
+2. **The Key Trade-off ("What Am I Giving Up?")**: Explicit comparison between top alternatives showing what is gained vs sacrificed.
+3. **Critical Conditions & Transparency**: Notes on compounding frequency, penalty clauses, and source verification dates.
 
-Never request or store:
+### 7. Privacy
+
+Never request, log, or store:
 
 - PAN
 - Aadhaar
@@ -97,54 +112,78 @@ Never request or store:
 - UPI credentials
 - Banking passwords
 
-### 7. Architecture
+All natural language user input must be sanitized via `redact_sensitive_input()`.
 
-Prefer Google Cloud services:
+### 8. Environment & Architecture
 
+To enable frictionless local development while strictly enforcing Google Cloud services in production, services must respect `ENVIRONMENT`:
+
+- `ENVIRONMENT=development` (Default local):
+  - Catalog: `LocalJsonCatalog` (reads `backend/data/fd-products.json`).
+  - Sessions: `MemorySessionRepository`.
+  - Works fully offline anywhere without GCP credentials.
+- `ENVIRONMENT=production` (Google Cloud / Cloud Run):
+  - Catalog: `BigQueryRepository` (`bankwise` dataset in BigQuery).
+  - Sessions: `FirestoreSessionRepository`.
+  - Gemini on Vertex AI + Google ADK.
+
+Prefer Google Cloud services for deployment:
 - Gemini / Vertex AI
 - Google ADK
 - Cloud Run
-- Cloud SQL
+- Cloud SQL / BigQuery
+- Firestore
 - Cloud Storage
 - Vertex AI Agent Search
-- BigQuery
-- Cloud Scheduler
-- Cloud Run Jobs
 - Secret Manager
 - Cloud Build
-- Artifact Registry
 
-### 8. Code quality
+### 9. Code Quality & Modularity
 
-Before creating new functionality:
+Before creating or modifying code:
 
-1. Check existing architecture.
-2. Reuse existing services/tools.
-3. Add tests.
-4. Keep business logic separate from AI logic.
-5. Keep financial calculations independent from Gemini.
-6. Keep source verification independent from UI.
+1. Keep business logic strictly separate from AI logic.
+2. Keep financial calculations independent from Gemini.
+3. Keep source verification independent from UI.
+4. **No dead or commented-out code**: Do not leave commented alternative implementations or imports in production files. Use modular dependency injection via `ENVIRONMENT`.
+5. Maintain strict typing (Pydantic models in Python, strong TypeScript types in frontend, no `any`).
+6. Remove unused legacy layers and keep code clean and easy to understand.
 
-### 9. Changes
+### 10. Frontend User Journey
 
-Do not make unrelated changes.
+- **`/` (Public Landing Page)**:
+  - Hero and primary natural-language query input box.
+  - Explanatory value propositions and trust badges.
+  - If an unauthenticated user submits a query, save the query in session state and redirect to `/login?redirect=/compare`.
+  - If authenticated, execute the query and navigate directly to `/compare`.
+- **`/login` (Authentication)**:
+  - Sign-in page with email/password and a one-click demo login option.
+  - Automatically redirects back to comparison results after authentication.
+- **`/compare` (Results)**:
+  - Top 2 Bank Trade-off Banner ("What Am I Giving Up?").
+  - Verified product cards with gains and give-ups.
+  - Gemini 3-part structured explanation.
+  - Excluded products list with transparent reasons.
+- **`/dashboard`**:
+  - Focus 100% on Fixed Deposits; non-FD categories (Savings, Loans, Cards) are clearly marked with "Coming Soon" badges for the MVP.
 
-Do not introduce a new framework/library when an existing project dependency already solves the problem.
+### 11. Testing
 
-### 10. Testing
+Every financial calculation requires unit tests (`backend/tests/test_fd_calculator.py`).
 
-Every financial calculation requires unit tests.
-
-Every source-verification rule requires tests.
+Every source-verification rule and conflict detection rule requires tests.
 
 Every important agent workflow requires evaluation cases.
+
+CI must pass with 100% test coverage for calculations and source rules.
 
 ## Definition of Done
 
 A feature is complete only when:
 
-- Implementation exists.
-- Tests exist.
+- Implementation exists and is modular.
+- Dead or commented-out code is removed.
+- Tests exist and pass (`pytest` / `npm run typecheck` / `npm run lint`).
 - Documentation is updated.
 - Source attribution exists where applicable.
 - Security/privacy requirements are satisfied.
