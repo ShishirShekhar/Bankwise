@@ -42,4 +42,8 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 - `/compare` shows API-returned deterministic gains and give-ups, sourced product details, and the structured explanation.
 - `/dashboard` keeps Fixed Deposits available and labels Savings Accounts, Loans, and Credit Cards as coming soon.
 
+## Frontend structure
+
+Route files under `app/` stay thin and delegate to page compositions in `components/`. Components are grouped by flow (`landing`, `auth`, `compare`, and `dashboard`), with reusable brand, query-form, and trust components in `components/shared/`. Query execution and result-session access live in `hooks/`; API types, redaction, formatting, and trade-off selection live in `lib/`.
+
 Run `npm run lint`, `npm run typecheck`, and `npm run build` from this directory before submitting frontend changes.
