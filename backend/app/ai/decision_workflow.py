@@ -5,6 +5,8 @@ from app.config import GOOGLE_CLOUD_PROJECT
 from app.domain.identifiers import new_id
 from app.domain.input import (
     extract_requirements_from_safe_query as extract_requirements,
+)
+from app.domain.input import (
     redact_sensitive_input,
 )
 
