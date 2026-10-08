@@ -51,6 +51,16 @@ export default function Compare() {
   const liquidity = requirements?.liquidity_need
     ? `${requirements.liquidity_need.toLowerCase()} liquidity need`
     : "Liquidity preference not specified";
+  const topOption =
+    result?.options.find((option) => option.tradeoff?.is_highest_calculated_maturity) ??
+    result?.options[0];
+  const flexibleOption =
+    result?.options.find((option) =>
+      option.tradeoff?.gains.some((gain) => gain.toLowerCase().includes("lower exit penalty")),
+    ) ?? result?.options.find((option) => option !== topOption);
+  const explanationSections = result?.explanation.match(
+    /(?:^|\n)\s*(?:[1-3]\.?\s*)?(Executive Decision Summary|The Key Trade-off(?: \([^\n]*\))?|Conditions & Transparency|Critical Conditions & Transparency)\s*:?\s*([\s\S]*?)(?=(?:\n\s*(?:[1-3]\.?\s*)?(?:Executive Decision Summary|The Key Trade-off|Conditions & Transparency|Critical Conditions & Transparency)\s*:?)|$)/gi,
+  );
 
   return (
     <main className="min-h-screen bg-[#f7f8fc] text-gray-900">
@@ -139,6 +149,65 @@ export default function Compare() {
               </p>
             </div>
 
+            {topOption && flexibleOption && (
+              <section
+                className="mt-7 rounded-3xl border border-indigo-200 bg-white p-6 shadow-sm sm:p-8"
+                aria-labelledby="tradeoff-heading"
+              >
+                <p className="text-xs font-semibold tracking-[0.15em] text-indigo-700 uppercase">
+                  What am I giving up?
+                </p>
+                <h2 id="tradeoff-heading" className="mt-2 text-2xl font-semibold">
+                  Return and flexibility, side by side
+                </h2>
+                <div className="mt-5 grid gap-4 md:grid-cols-2">
+                  <div className="rounded-2xl bg-green-50 p-5">
+                    <p className="text-sm font-semibold text-green-900">
+                      Option A · Highest calculated maturity
+                    </p>
+                    <p className="mt-1 text-lg font-semibold text-gray-900">
+                      {topOption.bank} · {topOption.maturity}
+                    </p>
+                    <ul className="mt-3 space-y-1 text-sm text-green-900">
+                      {(
+                        topOption.tradeoff?.gains ?? [
+                          "Highest calculated maturity among returned options",
+                        ]
+                      ).map((item) => (
+                        <li key={item}>✓ {item}</li>
+                      ))}
+                    </ul>
+                    <ul className="mt-3 space-y-1 text-sm text-amber-900">
+                      {(topOption.tradeoff?.give_ups ?? []).map((item) => (
+                        <li key={item}>− {item}</li>
+                      ))}
+                    </ul>
+                  </div>
+                  <div className="rounded-2xl bg-amber-50 p-5">
+                    <p className="text-sm font-semibold text-amber-900">
+                      Option B · Lower penalty / alternative
+                    </p>
+                    <p className="mt-1 text-lg font-semibold text-gray-900">
+                      {flexibleOption.bank} · {flexibleOption.maturity}
+                    </p>
+                    <ul className="mt-3 space-y-1 text-sm text-green-900">
+                      {(flexibleOption.tradeoff?.gains ?? []).map((item) => (
+                        <li key={item}>✓ {item}</li>
+                      ))}
+                    </ul>
+                    <ul className="mt-3 space-y-1 text-sm text-amber-900">
+                      {(flexibleOption.tradeoff?.give_ups ?? []).map((item) => (
+                        <li key={item}>− {item}</li>
+                      ))}
+                    </ul>
+                    <p className="mt-3 text-sm text-gray-700">
+                      Withdrawal terms: {flexibleOption.early_exit_note || flexibleOption.penalty}
+                    </p>
+                  </div>
+                </div>
+              </section>
+            )}
+
             {result.options.length > 0 ? (
               <div className="mt-10">
                 <div className="mb-5 flex items-center justify-between">
@@ -176,6 +245,34 @@ export default function Compare() {
                         <p className="mt-1 text-sm text-green-700">
                           {option.interest} estimated interest
                         </p>
+                      </div>
+                      <div className="mt-4 grid gap-3">
+                        <div className="rounded-xl bg-green-50 p-3">
+                          <p className="text-xs font-semibold tracking-wide text-green-800 uppercase">
+                            What you gain
+                          </p>
+                          <ul className="mt-2 space-y-1 text-sm text-green-900">
+                            {(option.tradeoff?.gains ?? []).map((item) => (
+                              <li key={item}>✓ {item}</li>
+                            ))}
+                            {!option.tradeoff?.gains.length && (
+                              <li>Product terms verified from the linked source.</li>
+                            )}
+                          </ul>
+                        </div>
+                        <div className="rounded-xl bg-amber-50 p-3">
+                          <p className="text-xs font-semibold tracking-wide text-amber-800 uppercase">
+                            What you give up
+                          </p>
+                          <ul className="mt-2 space-y-1 text-sm text-amber-900">
+                            {(option.tradeoff?.give_ups ?? []).map((item) => (
+                              <li key={item}>− {item}</li>
+                            ))}
+                            {!option.tradeoff?.give_ups.length && (
+                              <li>Compare withdrawal terms below before deciding.</li>
+                            )}
+                          </ul>
+                        </div>
                       </div>
                       <div className="mt-5 border-b border-gray-100 pb-4">
                         <p className="text-sm text-gray-500">Early withdrawal</p>
@@ -267,7 +364,32 @@ export default function Compare() {
               <p className="text-sm font-semibold tracking-[0.15em] text-blue-200 uppercase">
                 BankWise explanation
               </p>
-              <p className="mt-4 max-w-4xl leading-7 text-blue-100">{result.explanation}</p>
+              {explanationSections?.length ? (
+                <div className="mt-5 grid gap-4 md:grid-cols-3">
+                  {Array.from(explanationSections).map((section, index) => {
+                    const parsed = section.match(
+                      /(?:[1-3]\.?\s*)?(Executive Decision Summary|The Key Trade-off(?: \([^\n]*\))?|Conditions & Transparency|Critical Conditions & Transparency)\s*:?\s*([\s\S]*)/i,
+                    );
+                    return (
+                      <article
+                        key={`${parsed?.[1] ?? "section"}-${index}`}
+                        className="rounded-2xl bg-white/10 p-5"
+                      >
+                        <h2 className="font-semibold text-white">
+                          {parsed?.[1] ?? `Part ${index + 1}`}
+                        </h2>
+                        <p className="mt-3 text-sm leading-6 whitespace-pre-line text-blue-100">
+                          {parsed?.[2]?.trim()}
+                        </p>
+                      </article>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className="mt-4 max-w-4xl leading-7 whitespace-pre-line text-blue-100">
+                  {result.explanation}
+                </p>
+              )}
             </section>
 
             {result.warnings.length > 0 && (
