@@ -28,6 +28,8 @@ uvicorn app.main:app --reload
 
 Open `/docs` for the API schema. Copy `.env.example` to `.env` and set `GOOGLE_CLOUD_PROJECT`, `BIGQUERY_PROJECT`, `BIGQUERY_DATASET`, `BIGQUERY_LOCATION`, and `FIRESTORE_PROJECT`. Authenticate locally with `gcloud auth application-default login`. Apply [the BigQuery schema](sql/bigquery_schema.sql) after replacing `YOUR_PROJECT` and the dataset location. The catalogue intentionally starts empty. Add bank/product/rate/source records only after manual verification against official bank sources; rates without current HIGH confidence source metadata cannot be used by decision or calculation APIs.
 
+Create the configured BigQuery dataset and its tables with `python -m scripts.create_bigquery_dataset` from `backend/`. The script reads project, dataset, and location from `.env`, then applies the idempotent DDL in `sql/bigquery_schema.sql`. It requires Google Cloud ADC credentials and permission to create datasets and tables.
+
 ## Endpoints
 
 - `GET /api/health`
