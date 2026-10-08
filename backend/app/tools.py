@@ -1,9 +1,7 @@
 """ADK tools for requirement extraction, product research, verification, and calculation."""
 
-
 from datetime import date, datetime
 
-# from app.repositories.local_json import LocalJsonCatalog
 from app.api.dependencies import get_catalog
 from app.domain.catalog import conflict_payload, product_payload, source_payload
 from app.domain.input import extract_requirements
@@ -21,7 +19,6 @@ def extract_requirements_tool(query: str) -> dict:
 
 def search_products_tool(amount: float, tenure_months: int) -> dict:
     """Find FD products for the requested amount and tenure, including source status."""
-    # catalog = LocalJsonCatalog()
     catalog = get_catalog()
     products = catalog.list_products(category="FD", status="ACTIVE")
     return {
@@ -34,7 +31,6 @@ def search_products_tool(amount: float, tenure_months: int) -> dict:
 
 def verify_product_tool(product_id: str) -> dict:
     """Check stored source freshness and return open conflicts for a product."""
-    # catalog = LocalJsonCatalog()
     catalog = get_catalog()
     product = catalog.get_product(product_id)
     if not product:

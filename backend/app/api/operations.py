@@ -1,7 +1,7 @@
 """Health and source-verification routes."""
 
 from importlib.util import find_spec
-from typing import Annotated
+from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException
 
@@ -21,9 +21,6 @@ from app.domain.sources import (
     source_is_stale,
     source_issues,
 )
-
-# from app.repositories.local_json import DATA_FILE, LocalJsonCatalog
-from app.repositories.bigquery import BigQueryRepository
 from app.schemas import HealthResponse
 
 router = APIRouter()
@@ -36,8 +33,7 @@ def health():
 
 @router.post("/api/verification/run")
 def verification_run(
-    # catalog: Annotated[LocalJsonCatalog, Depends(get_catalog)],
-    catalog: Annotated[BigQueryRepository, Depends(get_catalog)],
+    catalog: Annotated[Any, Depends(get_catalog)],
 ):
     reports = []
     for product in catalog.list_products(category="FD", status="ACTIVE"):
@@ -89,8 +85,7 @@ def verification_run(
 
 @router.get("/api/conflicts")
 def list_conflicts(
-    # catalog: Annotated[LocalJsonCatalog, Depends(get_catalog)],
-    catalog: Annotated[BigQueryRepository, Depends(get_catalog)],
+    catalog: Annotated[Any, Depends(get_catalog)],
     status: str = OPEN,
 ):
     """Source conflicts for the UI/admin; OPEN ones block the disputed value."""
@@ -113,10 +108,6 @@ def _installed(module: str) -> bool:
 @router.get("/api/agent/health")
 def agent_health():
     return {
-        # Previous local development status:
-        # "catalog_source": "local_json",
-        # "local_data_configured": DATA_FILE.is_file(),
-        # "session_store": "in_memory",
         "catalog_source": "bigquery",
         "session_store": "firestore",
         "adk_configured": bool(GOOGLE_CLOUD_PROJECT and _installed("google.adk")),
