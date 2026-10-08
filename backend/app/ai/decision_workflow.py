@@ -27,6 +27,7 @@ async def run_decision_workflow(query: str, catalog, sessions) -> dict:
             "products": [],
             "comparisons": [],
             "tradeoffs": [],
+            "tradeoff_summary": None,
             "warnings": [],
             "sources": [],
             "clarification_needed": requirements.missing_information,
@@ -63,6 +64,7 @@ async def run_decision_workflow(query: str, catalog, sessions) -> dict:
         "tradeoffs": [
             item["tradeoff"] for item in result["products"] if item.get("tradeoff")
         ],
+        "tradeoff_summary": result.get("tradeoff_summary"),
         "warnings": result["warnings"],
         "sources": list(
             {

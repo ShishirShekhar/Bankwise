@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from app.api.dependencies import get_catalog
 from app.config import (
     BIGQUERY_PROJECT,
+    ENVIRONMENT,
     FIRESTORE_PROJECT,
     GEMINI_MODEL,
     GOOGLE_CLOUD_PROJECT,
@@ -108,8 +109,9 @@ def _installed(module: str) -> bool:
 @router.get("/api/agent/health")
 def agent_health():
     return {
-        "catalog_source": "bigquery",
-        "session_store": "firestore",
+        "environment": ENVIRONMENT,
+        "catalog_source": "bigquery" if ENVIRONMENT == "production" else "local_json",
+        "session_store": "firestore" if ENVIRONMENT == "production" else "in_memory",
         "adk_configured": bool(GOOGLE_CLOUD_PROJECT and _installed("google.adk")),
         "gemini_configured": bool(GOOGLE_CLOUD_PROJECT and _installed("google.genai")),
         "bigquery_configured": bool(

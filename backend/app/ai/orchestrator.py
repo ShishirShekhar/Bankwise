@@ -74,8 +74,14 @@ def build_root_agent(decision_context: dict):
     explanation_agent = Agent(
         name="explanation_agent",
         model=GEMINI_MODEL,
-        instruction="Explain outcomes and trade-offs using only the verified decision context. Do not add facts or make a black-box ranking. "
-        + BASE_RULES,
+        instruction=(
+            "Explain outcomes and trade-offs using only the verified decision context. Do not add facts or make a black-box ranking. "
+            "Structure your explanation into three clear sections:\n"
+            "1. Executive Decision Summary: Tailored directly to the user's stated amount, tenure, and liquidity preference.\n"
+            "2. The Key Trade-off ('What Am I Giving Up?'): Explicit comparison of the top alternatives showing what is gained vs sacrificed (e.g. maturity vs penalty/flexibility).\n"
+            "3. Conditions & Transparency: Explicit notes on compounding frequency, premature withdrawal rules, and official verification dates.\n"
+            + BASE_RULES
+        ),
         tools=[get_verified_decision_context],
     )
     return Agent(
@@ -117,12 +123,14 @@ async def run_decision_agent(query: str, requirements: dict, decision_context: d
             app_name=app_name, user_id=user_id
         )
         prompt = (
-            "User request: "
-            + query
-            + "\nRequirements parsed by the API: "
-            + str(requirements)
-            + "\nThe API's deterministic comparison is available through the explanation agent context tool. "
-            "Coordinate the specialist agents, and make the final answer consistent with that context."
+            f"User request: {query}\n"
+            f"Requirements parsed by the API: {requirements}\n"
+            "The API's deterministic comparison is available through the explanation agent context tool.\n"
+            "Produce a structured 3-part explanation with:\n"
+            "1. Executive Decision Summary\n"
+            "2. The Key Trade-off ('What Am I Giving Up?')\n"
+            "3. Conditions & Transparency\n"
+            "Never invent numbers or dates. Rely solely on the verified tool context."
         )
         message = types.Content(role="user", parts=[types.Part(text=prompt)])
         response_text = []
