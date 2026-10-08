@@ -51,8 +51,14 @@ def test_ask_response_matches_comparison_card_fields_and_does_not_guess_exit_dat
                         "interest_earned": 68000,
                         "warnings": ["Estimate."],
                     },
+                    "tradeoff": {
+                        "is_highest_calculated_maturity": True,
+                        "gains": ["Highest estimated return"],
+                        "give_ups": ["Standard exit terms apply"],
+                    },
                 }
             ],
+            "tradeoff_summary": "HDFC offers highest return.",
             "sources": [],
             "warnings": [],
         }
@@ -66,3 +72,68 @@ def test_ask_response_matches_comparison_card_fields_and_does_not_guess_exit_dat
     assert option["flexibility"] == "Available"
     assert option["early_exit_amount"] is None
     assert option["early_exit_months"] is None
+    assert option["tradeoff"]["is_highest_calculated_maturity"] is True
+    assert "Highest estimated return" in option["tradeoff"]["gains"]
+    assert result["tradeoff_summary"] == "HDFC offers highest return."
+
+
+def test_ask_response_preserves_gemini_explanation_when_present():
+    result = to_ask_response(
+        {
+            "requirements": {
+                "product_category": "FD",
+                "amount": 500000,
+                "duration_months": 24,
+                "missing_information": [],
+            },
+            "comparisons": [
+                {
+                    "product": {
+                        "bank": "Bank A",
+                        "name": "FD",
+                        "rates": [{"annual_rate_percent": 7.0, "usable_for_calculation": True, "source_id": "s1"}],
+                        "sources": [{"id": "s1", "verified_at": "2026-10-04", "freshness": "HIGH"}],
+                        "conditions": [],
+                    },
+                    "eligible": True,
+                    "calculation": {"maturity_amount": 570000, "interest_earned": 70000},
+                }
+            ],
+            "explanation": "Custom Gemini 3-part explanation text",
+            "sources": [],
+            "warnings": [],
+        }
+    )
+    assert result["explanation"] == "Custom Gemini 3-part explanation text"
+
+
+def test_ask_response_structured_fallback_layout_when_no_ai_explanation():
+    result = to_ask_response(
+        {
+            "requirements": {
+                "product_category": "FD",
+                "amount": 500000,
+                "duration_months": 24,
+                "missing_information": [],
+            },
+            "comparisons": [
+                {
+                    "product": {
+                        "bank": "Bank A",
+                        "name": "FD",
+                        "rates": [{"annual_rate_percent": 7.0, "usable_for_calculation": True, "source_id": "s1"}],
+                        "sources": [{"id": "s1", "verified_at": "2026-10-04", "freshness": "HIGH"}],
+                        "conditions": [],
+                    },
+                    "eligible": True,
+                    "calculation": {"maturity_amount": 570000, "interest_earned": 70000},
+                }
+            ],
+            "tradeoff_summary": "Bank A yields more than Bank B.",
+            "sources": [],
+            "warnings": [],
+        }
+    )
+    assert "1. Executive Decision Summary:" in result["explanation"]
+    assert "2. The Key Trade-off ('What Am I Giving Up?'): Bank A yields more than Bank B." in result["explanation"]
+    assert "3. Conditions & Transparency:" in result["explanation"]

@@ -3,7 +3,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import assistant, catalog, decisions, operations
+from app.api import assistant, catalog, operations, sessions
 from app.config import CORS_ORIGINS
 
 app = FastAPI(
@@ -19,5 +19,5 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-for router in (assistant.router, catalog.router, decisions.router, operations.router):
+for router in (assistant.router, catalog.router, operations.router, sessions.router):
     app.include_router(router)

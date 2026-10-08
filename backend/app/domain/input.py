@@ -118,8 +118,16 @@ def _redact_long_numbers(text: str) -> str:
 
 
 def extract_requirements(query: str, use_gemini: bool = True) -> Requirements:
-    """Use Gemini when configured; otherwise extract only values stated explicitly."""
-    query = redact_sensitive_input(query)
+    """Redact user input, then extract only requirements stated explicitly."""
+    return extract_requirements_from_safe_query(
+        redact_sensitive_input(query), use_gemini=use_gemini
+    )
+
+
+def extract_requirements_from_safe_query(
+    query: str, use_gemini: bool = True
+) -> Requirements:
+    """Extract requirements from input already passed through redaction."""
     amount_match = re.search(
         r"(?:(?:₹|rs\.?\s*|inr\s*)(?P<currency_amount>[\d,]{1,24}(?:\.\d{1,4})?)\s*(?P<currency_scale>lakhs?|lacs?|crores?)?"
         r"|(?<![\w.])(?P<bare_amount>[\d,]{1,24}(?:\.\d{1,4})?)\s*(?P<bare_scale>lakhs?|lacs?|crores?)\b)",

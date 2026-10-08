@@ -3,7 +3,12 @@
 from app.ai.orchestrator import run_decision_agent
 from app.config import GOOGLE_CLOUD_PROJECT
 from app.domain.identifiers import new_id
-from app.domain.input import extract_requirements, redact_sensitive_input
+from app.domain.input import (
+    extract_requirements_from_safe_query as extract_requirements,
+)
+from app.domain.input import (
+    redact_sensitive_input,
+)
 
 
 async def run_decision_workflow(query: str, catalog, sessions) -> dict:
@@ -27,6 +32,7 @@ async def run_decision_workflow(query: str, catalog, sessions) -> dict:
             "products": [],
             "comparisons": [],
             "tradeoffs": [],
+            "tradeoff_summary": None,
             "warnings": [],
             "sources": [],
             "clarification_needed": requirements.missing_information,
@@ -63,6 +69,7 @@ async def run_decision_workflow(query: str, catalog, sessions) -> dict:
         "tradeoffs": [
             item["tradeoff"] for item in result["products"] if item.get("tradeoff")
         ],
+        "tradeoff_summary": result.get("tradeoff_summary"),
         "warnings": result["warnings"],
         "sources": list(
             {

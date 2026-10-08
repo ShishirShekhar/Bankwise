@@ -9,6 +9,7 @@ def setting(name: str, default: str) -> str:
     return os.getenv(name, default)
 
 
+ENVIRONMENT = setting("ENVIRONMENT", "development").lower()
 GEMINI_MODEL = setting("GEMINI_MODEL", "gemini-2.5-flash")
 GOOGLE_CLOUD_PROJECT = setting("GOOGLE_CLOUD_PROJECT", "")
 GOOGLE_CLOUD_LOCATION = setting("GOOGLE_CLOUD_LOCATION", "us-central1")

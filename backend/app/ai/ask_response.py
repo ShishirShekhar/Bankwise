@@ -146,6 +146,7 @@ def to_ask_response(result: dict) -> dict:
                 # Deterministic calculator output, unchanged, for the breakdown view.
                 "calculation": comparison.get("calculation"),
                 "penalty_source_url": withdrawal.get("source_url") if withdrawal else None,
+                "tradeoff": comparison.get("tradeoff"),
             }
         )
 
@@ -171,16 +172,26 @@ def to_ask_response(result: dict) -> dict:
     elif options:
         status = "OK"
         message = None
-        top = options[0]
-        amount_text = _inr(requirements.get("amount"))
-        duration = requirements.get("duration_months")
-        explanation = (
-            f"For {amount_text} over {duration} months, {top['bank']} has the highest "
-            f"estimated maturity at {top['maturity']}. Estimates assume a cumulative FD "
-            "with quarterly reinvestment and may differ from the bank's exact day-count method. "
-            "You mentioned possible early withdrawal; the amount is not estimated because no "
-            "withdrawal date was provided. Review each option's sourced withdrawal terms."
-        )
+        # Prefer Gemini ADK explanation when present; otherwise use 3-part structured layout
+        ai_explanation = result.get("explanation")
+        if ai_explanation:
+            explanation = ai_explanation
+        else:
+            top = options[0]
+            amount_text = _inr(requirements.get("amount"))
+            duration = requirements.get("duration_months")
+            tradeoff_text = result.get("tradeoff_summary") or ""
+            parts = [
+                f"1. Executive Decision Summary: For {amount_text} over {duration} months, {top['bank']} offers the highest estimated maturity at {top['maturity']} ({top['rate']})."
+            ]
+            if tradeoff_text:
+                parts.append(f"2. The Key Trade-off ('What Am I Giving Up?'): {tradeoff_text}")
+            else:
+                parts.append("2. The Key Trade-off ('What Am I Giving Up?'): Review premature withdrawal rules and penalty clauses before deciding.")
+            parts.append(
+                "3. Conditions & Transparency: Calculations assume cumulative quarterly compounding. Exact day-count rules and exit penalties apply according to official bank rate cards."
+            )
+            explanation = "\n\n".join(parts)
     else:
         status = "NO_MATCH"
         message = "No currently verified rate matches this amount and duration."
@@ -200,6 +211,7 @@ def to_ask_response(result: dict) -> dict:
         "skipped": skipped,
         "best_if_withdrawn_early": None,
         "explanation": explanation,
+        "tradeoff_summary": result.get("tradeoff_summary"),
         "warnings": result.get("warnings", []),
         "sources": result.get("sources", []),
         "ai": result.get("ai"),

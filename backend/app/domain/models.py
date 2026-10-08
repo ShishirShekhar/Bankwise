@@ -34,10 +34,6 @@ class _Row(BaseModel):
         """Build from a catalogue row; columns not in the table are ignored."""
         return cls.model_validate(row)
 
-    def to_row(self) -> dict:
-        """Return JSON-safe values for the matching table's columns."""
-        return self.model_dump(mode="json")
-
 
 class Bank(_Row):
     id: Identifier

@@ -1,16 +1,13 @@
 """Product discovery, comparison, and deterministic calculation routes."""
 
-from typing import Annotated
+from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.api.dependencies import get_catalog
-from app.domain.catalog import product_payload
+from app.domain.catalog import product_payload, source_payload
 from app.domain.comparison import compare_products
 from app.domain.rates import calculate_product_fd
-
-# from app.repositories.local_json import LocalJsonCatalog
-from app.repositories.bigquery import BigQueryRepository
 from app.schemas import CompareRequest, FDCalculationRequest
 
 router = APIRouter()
@@ -18,8 +15,7 @@ router = APIRouter()
 
 @router.get("/api/products")
 def list_products(
-    # catalog: Annotated[LocalJsonCatalog, Depends(get_catalog)],
-    catalog: Annotated[BigQueryRepository, Depends(get_catalog)],
+    catalog: Annotated[Any, Depends(get_catalog)],
     category: str = "FD",
     amount: float = Query(default=None, gt=0),
     tenure_months: int = Query(default=None, alias="tenureMonths", gt=0),
@@ -35,8 +31,8 @@ def list_products(
 
 @router.get("/api/products/{product_id}")
 def get_product(
-    # product_id: str, catalog: Annotated[LocalJsonCatalog, Depends(get_catalog)]
-    product_id: str, catalog: Annotated[BigQueryRepository, Depends(get_catalog)]
+    product_id: str,
+    catalog: Annotated[Any, Depends(get_catalog)],
 ):
     product = catalog.get_product(product_id)
     if not product:
@@ -46,23 +42,22 @@ def get_product(
 
 @router.get("/api/products/{product_id}/sources")
 def get_product_sources(
-    # product_id: str, catalog: Annotated[LocalJsonCatalog, Depends(get_catalog)]
-    product_id: str, catalog: Annotated[BigQueryRepository, Depends(get_catalog)]
+    product_id: str,
+    catalog: Annotated[Any, Depends(get_catalog)],
 ):
     product = catalog.get_product(product_id)
     if not product:
         raise HTTPException(404, "Product not found")
     return {
         "product_id": product_id,
-        "sources": product_payload(product, catalog)["sources"],
+        "sources": [source_payload(source) for source in product.get("sources", [])],
     }
 
 
 @router.post("/api/calculations/fd")
 def calculate_fd_endpoint(
     request: FDCalculationRequest,
-    # catalog: Annotated[LocalJsonCatalog, Depends(get_catalog)],
-    catalog: Annotated[BigQueryRepository, Depends(get_catalog)],
+    catalog: Annotated[Any, Depends(get_catalog)],
 ):
     if not request.product_id:
         raise HTTPException(
@@ -85,8 +80,7 @@ def calculate_fd_endpoint(
 @router.post("/api/compare")
 def compare_endpoint(
     request: CompareRequest,
-    # catalog: Annotated[LocalJsonCatalog, Depends(get_catalog)],
-    catalog: Annotated[BigQueryRepository, Depends(get_catalog)],
+    catalog: Annotated[Any, Depends(get_catalog)],
 ):
     if (
         request.requirements.amount is None
