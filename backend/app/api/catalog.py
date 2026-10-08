@@ -5,7 +5,7 @@ from typing import Annotated, Any
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.api.dependencies import get_catalog
-from app.domain.catalog import product_payload
+from app.domain.catalog import product_payload, source_payload
 from app.domain.comparison import compare_products
 from app.domain.rates import calculate_product_fd
 from app.schemas import CompareRequest, FDCalculationRequest
@@ -50,7 +50,7 @@ def get_product_sources(
         raise HTTPException(404, "Product not found")
     return {
         "product_id": product_id,
-        "sources": product_payload(product, catalog)["sources"],
+        "sources": [source_payload(source) for source in product.get("sources", [])],
     }
 
 

@@ -1,9 +1,7 @@
 """Focused service operations: comparison and deterministic trade-off analysis."""
 
-from app.calculators.fd import calculate_fd
 from app.domain.catalog import product_payload
-from app.domain.rates import matching_rates
-from app.domain.sources import rate_is_usable
+from app.domain.rates import calculate_product_fd, matching_rates
 
 
 def _extract_penalty_pp(conditions: list[dict]) -> float | None:
@@ -26,30 +24,21 @@ def compare_products(catalog, product_ids: list, amount: float, tenure: int) -> 
             continue
         payload = product_payload(product, catalog, amount, tenure)
         eligible_rates = matching_rates(product.get("rates", []), amount, tenure)
-        rate = eligible_rates[0] if len(eligible_rates) == 1 else None
-        if rate:
-            ok, reason = rate_is_usable(catalog, product["id"], rate)
-        else:
-            ok, reason = False, "No single eligible rate band is available"
+        eligible = len(eligible_rates) == 1
         calculation = None
-        payout_type = (rate.get("payout_type") or "").upper() if rate else ""
-        if ok and payout_type == "CUMULATIVE":
-            try:
-                calculation = calculate_fd(
-                    amount, rate["rate"], tenure, rate.get("compounding_frequency")
-                )
-            except ValueError:
-                reason = "Calculation is unavailable for the selected inputs"
-        if ok and calculation is None:
-            reason = (
-                "The local data does not specify the payout type"
-                if not payout_type
-                else "Only cumulative payout calculation is currently supported"
-            )
+        reason = None
+        if eligible:
+            outcome = calculate_product_fd(catalog, product["id"], amount, tenure)
+            if outcome["status"] == "CALCULATED":
+                calculation = outcome["result"]
+            else:
+                reason = outcome["reason"]
+        else:
+            reason = "No single eligible rate band is available"
         results.append(
             {
                 "product": payload,
-                "eligible": bool(rate),
+                "eligible": eligible,
                 "calculation": calculation,
                 "calculation_blocked_reason": reason if calculation is None else None,
             }

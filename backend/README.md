@@ -5,7 +5,7 @@ FastAPI backend for source-grounded FD comparison. Financial calculations live i
 ## Code layout
 
 - `app/main.py` creates the FastAPI application and registers route modules.
-- `app/api/` contains routers grouped by assistant, catalog/calculation, decision/session, and operational endpoints. Shared repository providers are in `api/dependencies.py`.
+- `app/api/` contains routers grouped by assistant, catalog/calculation, session, and operational endpoints. Shared repository providers are in `api/dependencies.py`.
 - `app/domain/` contains requirement parsing, source verification, product shaping, comparison, ID generation, and the validated `Bank`/`Product` models in `domain/models.py` (they mirror the `banks` and `products` tables; `from_row`/`to_row` convert to and from table rows). It does not define HTTP routes.
 - `app/calculators/` contains deterministic financial calculations.
 - `app/ai/` contains Gemini extraction, the conversational pipeline, and AI tool operations.
@@ -35,14 +35,14 @@ Create the configured BigQuery dataset and its tables with `python -m scripts.cr
 - `GET /api/health`
 - `GET /api/products?category=FD&amount=500000&tenureMonths=24`
 - `GET /api/products/{id}` and `/api/products/{id}/sources`
-- `POST /api/decision` with `{ "query": "I have ₹5 lakh for 2 years and may need it early" }`
+- `POST /api/ask` with `{ "query": "I have ₹5 lakh for 2 years and may need it early" }`
 - `POST /api/calculations/fd`
 - `POST /api/compare`
 - `POST /api/verification/run` (checks stored metadata; it does not crawl sources)
 - `GET /api/conflicts?status=OPEN` (or `RESOLVED`) lists source conflicts with both values and sources
 - `GET /api/sessions/{session_id}` (retrieves the sanitized state saved in Firestore)
 
-Gemini requirement extraction uses Vertex AI when `GOOGLE_CLOUD_PROJECT` is configured and explicit fallback parsing otherwise. The decision endpoint invokes a Google ADK `Runner`; its orchestrator has tools for requirement extraction, product search, source verification, and product-backed deterministic calculation. It also receives a request-scoped tool containing the API's verified comparison result before writing the explanation. If Google credentials/project configuration is missing, the API still returns its structured deterministic result and reports `ai.status` as `not_configured`. Check `/api/agent/health` for configuration status. For local Vertex AI calls, configure ADC credentials, set the project/location in `.env`, and enable Vertex AI in that project.
+Requirement extraction uses Vertex AI when `GOOGLE_CLOUD_PROJECT` is configured and explicit fallback parsing otherwise. `POST /api/ask` performs product search, source verification, calculation, and comparison deterministically before invoking a single Google ADK explanation agent. The agent receives only the request's checked comparison context and cannot replace its calculations or trade-off metrics. If Google credentials/project configuration is missing, the API still returns its structured deterministic result and reports `ai.status` as `not_configured`. Check `/api/agent/health` for configuration status. For local Vertex AI calls, configure ADC credentials, set the project/location in `.env`, and enable Vertex AI in that project.
 
 RAG, Cloud Storage ingestion, automated external source fetching, and a curated-data write/import pipeline are not enabled yet. BigQuery access requires permission to create query jobs and read the configured dataset (typically BigQuery Job User plus dataset Data Viewer). Firestore access requires permission to read/write documents (typically Firestore User).
 
