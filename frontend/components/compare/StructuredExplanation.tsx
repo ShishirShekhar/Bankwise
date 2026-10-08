@@ -25,9 +25,9 @@ export function StructuredExplanation({ explanation }: { explanation: string }) 
         <p className="text-xs font-semibold tracking-[0.16em] text-blue-200 uppercase">
           BankWise explanation
         </p>
-        <h2 className="mt-2 text-xl font-semibold sm:text-2xl">Your decision, in context</h2>
+        <h2 className="mt-2 text-xl font-semibold sm:text-2xl">Analysis &amp; conditions</h2>
         <p className="mt-1 text-sm text-blue-100">
-          Summary, trade-off, then the conditions behind the comparison.
+          Why the options differ and which product terms matter.
         </p>
       </header>
 

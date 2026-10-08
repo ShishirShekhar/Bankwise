@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 
 import { ComparisonOverview } from "@/components/compare/ComparisonOverview";
 import { ComparisonWarnings } from "@/components/compare/ComparisonWarnings";
+import { DecisionAnswer } from "@/components/compare/DecisionAnswer";
 import { NoComparison } from "@/components/compare/NoComparison";
 import { ProductResults } from "@/components/compare/ProductResults";
 import { SkippedProducts } from "@/components/compare/SkippedProducts";
@@ -36,6 +37,7 @@ export function ComparisonPage() {
         ) : (
           <>
             <ComparisonOverview result={result} />
+            <DecisionAnswer options={result.options} />
             {highestMaturity && alternative && (
               <TradeoffBanner topOption={highestMaturity} alternative={alternative} />
             )}
