@@ -4,7 +4,7 @@ from app.ai.orchestrator import run_decision_agent
 from app.config import GOOGLE_CLOUD_PROJECT
 from app.domain.identifiers import new_id
 from app.domain.input import (
-    extract_requirements_from_safe_query,
+    extract_requirements_from_safe_query as extract_requirements,
     redact_sensitive_input,
 )
 
@@ -12,7 +12,7 @@ from app.domain.input import (
 async def run_decision_workflow(query: str, catalog, sessions) -> dict:
     """Build a deterministic comparison, then use ADK to explain checked results."""
     safe_query = redact_sensitive_input(query)
-    requirements = extract_requirements_from_safe_query(safe_query)
+    requirements = extract_requirements(safe_query)
     request_id = new_id("req")
     session_id = new_id("session")
 
