@@ -128,6 +128,7 @@ export default function Dashboard() {
             {/* Fixed Deposit */}
             <button
               type="button"
+              onClick={() => document.getElementById("financial-goal")?.focus()}
               className="group rounded-2xl border border-gray-200 bg-white p-6 text-left shadow-sm transition hover:-translate-y-1 hover:border-blue-200 hover:shadow-md"
             >
               <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-50 text-xl">
@@ -146,8 +147,12 @@ export default function Dashboard() {
             {/* Savings */}
             <button
               type="button"
-              className="group rounded-2xl border border-gray-200 bg-white p-6 text-left shadow-sm transition hover:-translate-y-1 hover:border-blue-200 hover:shadow-md"
+              disabled
+              className="group relative cursor-not-allowed rounded-2xl border border-gray-200 bg-white p-6 text-left opacity-75 shadow-sm"
             >
+              <span className="absolute top-5 right-5 rounded-full bg-amber-100 px-2.5 py-1 text-[10px] font-bold tracking-wide text-amber-800 uppercase">
+                Coming Soon
+              </span>
               <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-50 text-xl">
                 $
               </div>
@@ -158,14 +163,18 @@ export default function Dashboard() {
                 Compare interest rates, balances and account conditions.
               </p>
 
-              <span className="mt-4 block text-sm font-medium text-blue-600">Explore →</span>
+              <span className="mt-4 block text-sm font-medium text-gray-400">Coming soon</span>
             </button>
 
             {/* Loans */}
             <button
               type="button"
-              className="group rounded-2xl border border-gray-200 bg-white p-6 text-left shadow-sm transition hover:-translate-y-1 hover:border-blue-200 hover:shadow-md"
+              disabled
+              className="group relative cursor-not-allowed rounded-2xl border border-gray-200 bg-white p-6 text-left opacity-75 shadow-sm"
             >
+              <span className="absolute top-5 right-5 rounded-full bg-amber-100 px-2.5 py-1 text-[10px] font-bold tracking-wide text-amber-800 uppercase">
+                Coming Soon
+              </span>
               <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-50 text-xl">
                 ↗
               </div>
@@ -176,14 +185,18 @@ export default function Dashboard() {
                 Understand rates, fees, repayment terms and total cost.
               </p>
 
-              <span className="mt-4 block text-sm font-medium text-blue-600">Explore →</span>
+              <span className="mt-4 block text-sm font-medium text-gray-400">Coming soon</span>
             </button>
 
             {/* Credit Cards */}
             <button
               type="button"
-              className="group rounded-2xl border border-gray-200 bg-white p-6 text-left shadow-sm transition hover:-translate-y-1 hover:border-blue-200 hover:shadow-md"
+              disabled
+              className="group relative cursor-not-allowed rounded-2xl border border-gray-200 bg-white p-6 text-left opacity-75 shadow-sm"
             >
+              <span className="absolute top-5 right-5 rounded-full bg-amber-100 px-2.5 py-1 text-[10px] font-bold tracking-wide text-amber-800 uppercase">
+                Coming Soon
+              </span>
               <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-50 text-xl">
                 ◇
               </div>
@@ -194,7 +207,7 @@ export default function Dashboard() {
                 Compare fees, rewards, eligibility and key conditions.
               </p>
 
-              <span className="mt-4 block text-sm font-medium text-blue-600">Explore →</span>
+              <span className="mt-4 block text-sm font-medium text-gray-400">Coming soon</span>
             </button>
           </div>
         </div>
