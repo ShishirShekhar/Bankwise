@@ -1,6 +1,4 @@
-from datetime import date, datetime
-
-from pydantic import BaseModel, Field, HttpUrl
+from pydantic import BaseModel, Field
 
 
 class Requirements(BaseModel):
@@ -28,15 +26,6 @@ class FDCalculationRequest(BaseModel):
 class CompareRequest(BaseModel):
     product_ids: list[str] = Field(min_length=1, max_length=20)
     requirements: Requirements
-
-
-class SourceInput(BaseModel):
-    source_type: str
-    url: HttpUrl
-    title: str
-    verified_at: datetime | None = None
-    effective_from: date | None = None
-    effective_to: date | None = None
 
 
 class HealthResponse(BaseModel):
