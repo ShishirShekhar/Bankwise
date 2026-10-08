@@ -46,6 +46,12 @@ export type AskOption = {
   calculation_source_url: string | null;
   penalty_source_url: string | null;
   calculation?: FDCalculation | null;
+  tradeoff?: {
+    maturity_difference_vs_highest: number;
+    is_highest_calculated_maturity: boolean;
+    gains: string[];
+    give_ups: string[];
+  } | null;
 };
 
 export type AskResponse = {
@@ -76,13 +82,28 @@ const API_BASE_URL = (process.env.NEXT_PUBLIC_BANKWISE_API_URL || "http://localh
   "",
 );
 
+const sensitiveField =
+  /(\b(?:PAN|Aadhaar|account(?:\s+(?:no\.?|number))?|card(?:\s+(?:no\.?|number))?|CVV|UPI(?:\s+(?:ID|PIN))?|MPIN|OTP|PIN|password)\s*[:=#-]?\s*)([A-Za-z0-9@._+-]+(?:[ -][A-Za-z0-9]+)?)/gi;
+
+/** Redact sensitive values before a query is saved locally or sent to the API. */
+export function redactSensitiveInput(query: string): string {
+  const labelled = query.replace(sensitiveField, "$1[REDACTED]");
+  return labelled
+    .replace(/\b[A-Z]{5}\d{4}[A-Z]\b/gi, "[REDACTED]")
+    .replace(/\b\d(?:[ -]?\d){11,18}\b/g, (value) =>
+      value.replace(/\D/g, "").length >= 12 ? "[REDACTED]" : value,
+    )
+    .replace(/\b[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}\b/g, "[REDACTED]")
+    .replace(/\b[\w.-]+@[\w.-]+\b/g, "[REDACTED]");
+}
+
 export async function askBankwise(query: string): Promise<AskResponse> {
   let response: Response;
   try {
     response = await fetch(`${API_BASE_URL}/api/ask`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ query }),
+      body: JSON.stringify({ query: redactSensitiveInput(query) }),
     });
   } catch {
     throw new Error(
