@@ -1,6 +1,7 @@
 import "./globals.css";
 
 import type { Metadata } from "next";
+import type { ReactNode } from "react";
 
 import { AuthProvider } from "@/components/auth/AuthProvider";
 
@@ -9,7 +10,7 @@ export const metadata: Metadata = {
   description: "Compare verified fixed deposit rates, maturity estimates, and withdrawal trade-offs.",
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en" className="h-full antialiased">
       <body className="flex min-h-full flex-col">
