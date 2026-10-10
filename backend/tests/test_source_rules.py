@@ -226,8 +226,24 @@ def test_low_confidence_rates_never_reach_calculations():
     pnb = next(
         i for i in result["products"] if i["product"]["bank"] == "Punjab National Bank"
     )
-    assert {r["verification_status"] for r in pnb["product"]["rates"]} == {"CONFLICT"}
+    assert [r["verification_status"] for r in pnb["product"]["rates"]] == [
+        "CONFLICT",
+        "LOW",
+        "LOW",
+    ]
     assert pnb["calculation"] is None
+
+
+def test_tenure_scoped_rate_conflict_does_not_block_unrelated_bands():
+    catalog = LocalJsonCatalog()
+    pnb = next(p for p in catalog.list_products() if p["bank"] == "Punjab National Bank")
+    statuses = {
+        rate["tenure_min_months"]: rate_verification(catalog, pnb["id"], rate)[0]
+        for rate in pnb["rates"]
+    }
+    assert statuses[12] == "CONFLICT"
+    assert statuses[25] == "LOW"
+    assert statuses[36] == "LOW"
 
 
 def test_verification_run_reports_status_for_rates_conditions_and_sources():

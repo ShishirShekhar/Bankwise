@@ -23,6 +23,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(operations.health_router)
 app.include_router(auth.bootstrap_router)
 app.include_router(auth.router, dependencies=[Depends(require_authenticated_user)])
 for router in (assistant.router, catalog.router, operations.router, sessions.router):

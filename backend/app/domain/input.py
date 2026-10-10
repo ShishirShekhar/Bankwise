@@ -207,9 +207,21 @@ def extract_requirements_from_safe_query(
         else None
     )
     return Requirements(
+        product_category=_product_category(lowered),
         amount=amount,
         duration_months=tenure,
         liquidity_preference=liquidity,
         premature_withdrawal_important=liquidity == "HIGH",
         missing_information=missing,
     )
+
+
+def _product_category(query: str) -> str:
+    """Recognize unsupported categories without asking a model to guess."""
+    if "credit card" in query or "credit-card" in query:
+        return "CREDIT_CARD"
+    if "savings account" in query or "saving account" in query:
+        return "SAVINGS"
+    if any(term in query for term in ("loan", "emi", "mortgage")):
+        return "LOAN"
+    return "FD"

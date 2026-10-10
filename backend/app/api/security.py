@@ -4,10 +4,13 @@ import hashlib
 import hmac
 import secrets
 import time
+from collections import deque
 
 from fastapi import Header, HTTPException, Request, Response
 
 from app.config import (
+    ASK_RATE_LIMIT,
+    ASK_RATE_WINDOW_SECONDS,
     AUTH_COOKIE_SAMESITE,
     AUTH_COOKIE_SECURE,
     CORS_ORIGINS,
@@ -18,6 +21,26 @@ from app.config import (
 CSRF_HEADER = "X-CSRF-Token"
 SESSION_COOKIE = "__session" if ENVIRONMENT == "production" else "bankwise_session"
 CSRF_TOKEN_TTL_SECONDS = 60 * 60
+_ask_requests: dict[str, deque[float]] = {}
+
+
+def enforce_ask_rate_limit(user_id: str) -> int | None:
+    """Return retry-after seconds when a user exceeds the per-instance ask limit."""
+    now = time.monotonic()
+    recent = _ask_requests.setdefault(user_id, deque())
+    cutoff = now - ASK_RATE_WINDOW_SECONDS
+    while recent and recent[0] <= cutoff:
+        recent.popleft()
+    if len(recent) >= ASK_RATE_LIMIT:
+        return max(1, int(recent[0] + ASK_RATE_WINDOW_SECONDS - now + 0.999))
+    recent.append(now)
+    if len(_ask_requests) > 10000:
+        stale_users = [key for key, events in _ask_requests.items() if not events or events[-1] <= cutoff]
+        for key in stale_users:
+            _ask_requests.pop(key, None)
+        if len(_ask_requests) > 10000:
+            raise HTTPException(503, "Comparison service is temporarily busy")
+    return None
 
 
 def create_csrf_token() -> str:

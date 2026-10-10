@@ -3,7 +3,7 @@ from pydantic import BaseModel, Field
 
 class Requirements(BaseModel):
     product_category: str = "FD"
-    amount: float | None = Field(default=None, gt=0)
+    amount: float | None = Field(default=None, gt=0, allow_inf_nan=False)
     currency: str = "INR"
     duration_months: int | None = Field(default=None, gt=0)
     liquidity_preference: str | None = None
@@ -19,7 +19,7 @@ class DecisionRequest(BaseModel):
 
 class FDCalculationRequest(BaseModel):
     product_id: str
-    principal: float = Field(gt=0)
+    principal: float = Field(gt=0, allow_inf_nan=False)
     tenure_months: int = Field(gt=0, le=1200)
 
 

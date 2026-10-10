@@ -2,11 +2,15 @@
 
 from app.domain.catalog import product_payload
 from app.domain.rates import calculate_product_fd, matching_rates
+from app.domain.sources import VerificationStatus, condition_verification
 
 
-def _extract_penalty_pp(conditions: list[dict]) -> float | None:
+def _extract_penalty_pp(catalog, product_id: str, conditions: list[dict]) -> float | None:
     for cond in conditions:
-        if cond.get("type") == "premature_withdrawal_penalty_percentage_points":
+        if cond.get("condition_type") == "premature_withdrawal_penalty_percentage_points":
+            status, _reason = condition_verification(catalog, product_id, cond)
+            if status != VerificationStatus.HIGH:
+                continue
             val = cond.get("value")
             if val is not None:
                 try:
@@ -56,7 +60,9 @@ def compare_products(catalog, product_ids: list, amount: float, tenure: int) -> 
         best_id = best_item["product"]["id"]
         best_amount = best_item["calculation"]["maturity_amount"]
         best_bank = best_item["product"]["bank"]
-        best_penalty = _extract_penalty_pp(best_item["product"].get("conditions", []))
+        best_penalty = _extract_penalty_pp(
+            catalog, best_id, best_item["product"].get("conditions", [])
+        )
 
         second_item = calculated_items[1] if len(calculated_items) > 1 else None
         second_amount = (
@@ -64,14 +70,22 @@ def compare_products(catalog, product_ids: list, amount: float, tenure: int) -> 
         )
         second_bank = second_item["product"]["bank"] if second_item else None
         second_penalty = (
-            _extract_penalty_pp(second_item["product"].get("conditions", []))
+            _extract_penalty_pp(
+                catalog,
+                second_item["product"]["id"],
+                second_item["product"].get("conditions", []),
+            )
             if second_item
             else None
         )
 
         min_penalty = None
         for item in calculated_items:
-            p = _extract_penalty_pp(item["product"].get("conditions", []))
+            p = _extract_penalty_pp(
+                catalog,
+                item["product"]["id"],
+                item["product"].get("conditions", []),
+            )
             if p is not None and (min_penalty is None or p < min_penalty):
                 min_penalty = p
 
@@ -84,7 +98,11 @@ def compare_products(catalog, product_ids: list, amount: float, tenure: int) -> 
             maturity = calc["maturity_amount"]
             diff = round(best_amount - maturity, 2)
             is_best = item["product"]["id"] == best_id
-            penalty = _extract_penalty_pp(item["product"].get("conditions", []))
+            penalty = _extract_penalty_pp(
+                catalog,
+                item["product"]["id"],
+                item["product"].get("conditions", []),
+            )
 
             gains = []
             give_ups = []
@@ -105,10 +123,10 @@ def compare_products(catalog, product_ids: list, amount: float, tenure: int) -> 
                     give_ups.append(
                         f"Higher early exit penalty ({penalty:.2f}% vs {min_penalty:.2f}%)"
                     )
+                elif penalty is None or min_penalty is None:
+                    give_ups.append("No verified penalty comparison is available")
                 else:
-                    give_ups.append(
-                        "Standard premature withdrawal terms and conditions apply"
-                    )
+                    give_ups.append("No higher verified penalty was identified")
             else:
                 give_ups.append(f"-₹{diff:,.2f} lower calculated maturity vs {best_bank}")
                 if (
@@ -120,7 +138,7 @@ def compare_products(catalog, product_ids: list, amount: float, tenure: int) -> 
                         f"Lower exit penalty ({penalty:.2f}% vs {best_penalty:.2f}%)"
                     )
                 else:
-                    gains.append("Verified domestic term deposit terms")
+                    gains.append("No verified penalty advantage is available")
 
             item["tradeoff"] = {
                 "maturity_difference_vs_highest": diff,

@@ -26,9 +26,10 @@ from app.domain.sources import (
 from app.schemas import HealthResponse
 
 router = APIRouter()
+health_router = APIRouter()
 
 
-@router.get("/api/health", response_model=HealthResponse)
+@health_router.get("/api/health", response_model=HealthResponse)
 def health():
     return {"status": "healthy"}
 

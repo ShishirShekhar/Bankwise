@@ -17,10 +17,11 @@ def test_ask_response_matches_comparison_card_fields_and_does_not_guess_exit_dat
             }
         ],
         "conditions": [
-            {"type": "premature_withdrawal_allowed", "value": True},
+            {"type": "premature_withdrawal_allowed", "value": True, "verified": True},
             {
                 "type": "premature_withdrawal_policy",
                 "value": "One percentage point is deducted.",
+                "verified": True,
                 "source_url": "https://bank.example/withdrawal",
             },
         ],
@@ -77,7 +78,52 @@ def test_ask_response_matches_comparison_card_fields_and_does_not_guess_exit_dat
     assert result["tradeoff_summary"] == "HDFC offers highest return."
 
 
-def test_ask_response_preserves_gemini_explanation_when_present():
+def test_ask_response_does_not_surface_unverified_withdrawal_conditions():
+    product = {
+        "bank": "Bank A",
+        "name": "FD",
+        "rates": [{"annual_rate_percent": 7.0, "usable_for_calculation": True, "source_id": "s1"}],
+        "sources": [{"id": "s1", "verified_at": "2026-10-04", "freshness": "HIGH"}],
+        "conditions": [
+            {"type": "premature_withdrawal_allowed", "value": True, "verified": False},
+            {
+                "type": "premature_withdrawal_policy",
+                "value": "A 9% penalty applies.",
+                "verified": False,
+            },
+            {
+                "type": "premature_withdrawal_penalty_percentage_points",
+                "value": 9,
+                "verified": False,
+            },
+        ],
+    }
+    result = to_ask_response(
+        {
+            "requirements": {
+                "product_category": "FD",
+                "amount": 500000,
+                "duration_months": 24,
+                "missing_information": [],
+            },
+            "comparisons": [
+                {
+                    "product": product,
+                    "eligible": True,
+                    "calculation": {"maturity_amount": 570000, "interest_earned": 70000},
+                }
+            ],
+            "warnings": [],
+        }
+    )
+
+    option = result["options"][0]
+    assert option["flexibility"] == "Terms unavailable"
+    assert option["penalty_pp"] is None
+    assert "9%" not in option["early_exit_note"]
+
+
+def test_ask_response_ignores_model_text_and_uses_source_grounded_layout():
     result = to_ask_response(
         {
             "requirements": {
@@ -99,15 +145,19 @@ def test_ask_response_preserves_gemini_explanation_when_present():
                     "calculation": {"maturity_amount": 570000, "interest_earned": 70000},
                 }
             ],
-            "explanation": "Custom Gemini 3-part explanation text",
+            "explanation": "The rate is guaranteed to be 99%.",
             "sources": [],
             "warnings": [],
         }
     )
-    assert result["explanation"] == "Custom Gemini 3-part explanation text"
+    assert "guaranteed to be 99%" not in result["explanation"]
+    assert "1. Executive Decision Summary:" in result["explanation"]
+    assert "2. The Key Trade-off" in result["explanation"]
+    assert "3. Conditions & Transparency:" in result["explanation"]
+    assert "4 times per year" not in result["explanation"]
 
 
-def test_ask_response_structured_fallback_layout_when_no_ai_explanation():
+def test_ask_response_structured_layout_when_calculation_terms_are_missing():
     result = to_ask_response(
         {
             "requirements": {
@@ -137,3 +187,4 @@ def test_ask_response_structured_fallback_layout_when_no_ai_explanation():
     assert "1. Executive Decision Summary:" in result["explanation"]
     assert "2. The Key Trade-off ('What Am I Giving Up?'): Bank A yields more than Bank B." in result["explanation"]
     assert "3. Conditions & Transparency:" in result["explanation"]
+    assert "compounding terms are missing" in result["explanation"]

@@ -71,31 +71,45 @@ def to_ask_response(result: dict) -> dict:
         )
         calculation = comparison.get("calculation") or {}
         conditions = product.get("conditions", [])
+
+        def verified_condition(condition_type: str, product_conditions: list[dict]):
+            return next(
+                (
+                    condition
+                    for condition in product_conditions
+                    if condition.get("type") == condition_type
+                    and (
+                        condition.get("verification_status") == "HIGH"
+                        or condition.get("verified") is True
+                    )
+                ),
+                None,
+            )
+
         withdrawal = next(
             (
                 condition
                 for condition in conditions
                 if condition.get("type") == "premature_withdrawal_policy"
+                and (
+                    condition.get("verification_status") == "HIGH"
+                    or condition.get("verified") is True
+                )
             ),
             None,
         )
-        withdrawal_allowed = next(
-            (
-                condition.get("value")
-                for condition in conditions
-                if condition.get("type") == "premature_withdrawal_allowed"
-            ),
-            None,
+        withdrawal_allowed_condition = verified_condition(
+            "premature_withdrawal_allowed", conditions
         )
-        penalty = next(
-            (
-                condition.get("value")
-                for condition in conditions
-                if condition.get("type")
-                == "premature_withdrawal_penalty_percentage_points"
-            ),
-            None,
+        withdrawal_allowed = (
+            withdrawal_allowed_condition.get("value")
+            if withdrawal_allowed_condition
+            else None
         )
+        penalty_condition = verified_condition(
+            "premature_withdrawal_penalty_percentage_points", conditions
+        )
+        penalty = penalty_condition.get("value") if penalty_condition else None
         early_note = (
             withdrawal.get("value") if withdrawal else "Penalty terms are unavailable."
         )
@@ -172,26 +186,45 @@ def to_ask_response(result: dict) -> dict:
     elif options:
         status = "OK"
         message = None
-        # Prefer Gemini ADK explanation when present; otherwise use 3-part structured layout
-        ai_explanation = result.get("explanation")
-        if ai_explanation:
-            explanation = ai_explanation
-        else:
-            top = options[0]
-            amount_text = _inr(requirements.get("amount"))
-            duration = requirements.get("duration_months")
-            tradeoff_text = result.get("tradeoff_summary") or ""
-            parts = [
-                f"1. Executive Decision Summary: For {amount_text} over {duration} months, {top['bank']} offers the highest estimated maturity at {top['maturity']} ({top['rate']})."
+        top = options[0]
+        amount_text = _inr(requirements.get("amount"))
+        duration = requirements.get("duration_months")
+        liquidity = requirements.get("liquidity_need")
+        decision = (
+            f"For {amount_text} over {duration} months, {top['bank']} has the highest calculated maturity "
+            f"among the currently verified options: {top['maturity']} ({top['rate']})."
+        )
+        if liquidity:
+            decision += f" Your stated liquidity preference is {liquidity.lower()}."
+        tradeoff_text = result.get("tradeoff_summary") or (
+            "No verified alternative has a comparable calculated outcome for these inputs."
+        )
+        calculation = top.get("calculation") or {}
+        frequency = calculation.get("compounding_frequency_per_year")
+        source = top.get("source") or {}
+        conditions = top.get("early_exit_note") or "Withdrawal terms are unavailable."
+        transparency = (
+            f"The estimate uses the sourced compounding frequency of {frequency} times per year. "
+            if frequency
+            else "A maturity estimate is unavailable because compounding terms are missing. "
+        )
+        transparency += f"Withdrawal terms: {conditions}"
+        verified_at = source.get("verified_at")
+        transparency += (
+            f" Source verification date: {verified_at[:10]}."
+            if verified_at
+            else " Source verification date is unavailable."
+        )
+        warning = (calculation.get("warnings") or [None])[0]
+        if warning:
+            transparency += f" {warning}"
+        explanation = "\n\n".join(
+            [
+                f"1. Executive Decision Summary: {decision}",
+                f"2. The Key Trade-off ('What Am I Giving Up?'): {tradeoff_text}",
+                f"3. Conditions & Transparency: {transparency}",
             ]
-            if tradeoff_text:
-                parts.append(f"2. The Key Trade-off ('What Am I Giving Up?'): {tradeoff_text}")
-            else:
-                parts.append("2. The Key Trade-off ('What Am I Giving Up?'): Review premature withdrawal rules and penalty clauses before deciding.")
-            parts.append(
-                "3. Conditions & Transparency: Calculations assume cumulative quarterly compounding. Exact day-count rules and exit penalties apply according to official bank rate cards."
-            )
-            explanation = "\n\n".join(parts)
+        )
     else:
         status = "NO_MATCH"
         message = "No currently verified rate matches this amount and duration."
