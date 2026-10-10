@@ -4,6 +4,7 @@ from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException
 
+from app.api.auth import require_authenticated_user
 from app.api.dependencies import get_sessions
 
 router = APIRouter()
@@ -13,8 +14,9 @@ router = APIRouter()
 def get_decision_session(
     session_id: str,
     sessions: Annotated[Any, Depends(get_sessions)],
+    user: Annotated[dict, Depends(require_authenticated_user)],
 ):
-    session = sessions.get(session_id)
+    session = sessions.get_for_user(session_id, user["uid"])
     if not session:
         raise HTTPException(404, "Decision session not found")
     return session

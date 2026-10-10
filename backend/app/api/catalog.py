@@ -5,6 +5,7 @@ from typing import Annotated, Any
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.api.dependencies import get_catalog
+from app.api.security import require_csrf
 from app.domain.catalog import product_payload, source_payload
 from app.domain.comparison import compare_products
 from app.domain.rates import calculate_product_fd
@@ -54,7 +55,7 @@ def get_product_sources(
     }
 
 
-@router.post("/api/calculations/fd")
+@router.post("/api/calculations/fd", dependencies=[Depends(require_csrf)])
 def calculate_fd_endpoint(
     request: FDCalculationRequest,
     catalog: Annotated[Any, Depends(get_catalog)],
@@ -77,7 +78,7 @@ def calculate_fd_endpoint(
     raise HTTPException(422, outcome["reason"])
 
 
-@router.post("/api/compare")
+@router.post("/api/compare", dependencies=[Depends(require_csrf)])
 def compare_endpoint(
     request: CompareRequest,
     catalog: Annotated[Any, Depends(get_catalog)],

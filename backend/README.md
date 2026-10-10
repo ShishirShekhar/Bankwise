@@ -26,13 +26,22 @@ cp .env.example .env
 uvicorn app.main:app --reload
 ```
 
-Open `/docs` for the API schema. Copy `.env.example` to `.env` and set `GOOGLE_CLOUD_PROJECT`, `BIGQUERY_PROJECT`, `BIGQUERY_DATASET`, `BIGQUERY_LOCATION`, and `FIRESTORE_PROJECT`. Authenticate locally with `gcloud auth application-default login`. Apply [the BigQuery schema](sql/bigquery_schema.sql) after replacing `YOUR_PROJECT` and the dataset location. The catalogue intentionally starts empty. Add bank/product/rate/source records only after manual verification against official bank sources; rates without current HIGH confidence source metadata cannot be used by decision or calculation APIs.
+Copy `.env.example` to `.env` and set `GOOGLE_CLOUD_PROJECT`, `BIGQUERY_PROJECT`, `BIGQUERY_DATASET`, `BIGQUERY_LOCATION`, and `FIRESTORE_PROJECT`. Authenticate locally with `gcloud auth application-default login`. Apply [the BigQuery schema](sql/bigquery_schema.sql) after replacing `YOUR_PROJECT` and the dataset location. The catalogue intentionally starts empty. Add bank/product/rate/source records only after manual verification against official bank sources; rates without current HIGH confidence source metadata cannot be used by decision or calculation APIs.
+
+### Firebase Authentication
+
+The frontend uses the Firebase Web SDK for email/password and Google popup sign-in with in-memory persistence. It sends the resulting Firebase ID token once to `POST /api/auth/session`; the backend verifies the token and recent `auth_time`, then sets a five-day HTTP-only session cookie. The cookie is named `bankwise_session` locally and `__session` in production so Firebase Hosting forwards it to Cloud Run. The frontend immediately signs out of the Web SDK. `GET /api/auth/me` reports the cookie-backed session. Every business API route, health endpoint, and API documentation endpoint requires a verified cookie; API docs are disabled. Only `GET /api/auth/csrf` and `POST /api/auth/session` are public so the browser can establish a session. Mutating requests require a signed, one-hour CSRF token from `GET /api/auth/csrf` in `X-CSRF-Token` and an allowed `Origin`; CSRF validation does not depend on a separate cookie because Firebase Hosting strips all cookies except `__session` on Cloud Run rewrites.
+
+Set `ENVIRONMENT=local` for offline local JSON catalog and in-memory sessions. Set `ENVIRONMENT=production` on Cloud Run to use BigQuery, Firestore, secure cookies, and the `__session` cookie name. In production, provide `CSRF_SECRET` (at least 32 characters) through Secret Manager; do not put it in source control. Configure the frontend Firebase variables and keep `NEXT_PUBLIC_BANKWISE_API_URL` unset when `/api/**` is rewritten through Firebase Hosting. Set `CORS_ORIGINS` to the exact Hosting origin(s). Firebase Hosting forwards only the `__session` cookie to Cloud Run, so the production cookie name is required. For a directly addressed cross-site API instead of a Hosting rewrite, set `AUTH_COOKIE_SAMESITE=none` and keep `AUTH_COOKIE_SECURE=true`.
+
+Decision sessions include their Firebase UID as `user_id`; `/api/sessions/{session_id}` only returns a session to its owner.
 
 Create the configured BigQuery dataset and its tables with `python -m scripts.create_bigquery_dataset` from `backend/`. The script reads project, dataset, and location from `.env`, then applies the idempotent DDL in `sql/bigquery_schema.sql`. It requires Google Cloud ADC credentials and permission to create datasets and tables.
 
 ## Endpoints
 
-- `GET /api/health`
+- `GET /api/health` (verified session required)
+- `GET /api/auth/csrf`, `POST /api/auth/session`, `GET /api/auth/me`, and `POST /api/auth/logout` manage the browser session.
 - `GET /api/products?category=FD&amount=500000&tenureMonths=24`
 - `GET /api/products/{id}` and `/api/products/{id}/sources`
 - `POST /api/ask` with `{ "query": "I have ₹5 lakh for 2 years and may need it early" }`
