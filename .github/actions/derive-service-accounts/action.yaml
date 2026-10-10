@@ -1,0 +1,54 @@
+name: Derive Service Accounts
+description: Derive Google Cloud service account email addresses.
+
+inputs:
+  project_id:
+    description: Google Cloud project ID
+    required: true
+
+  deploy_service_account_name:
+    description: Deployment service account name
+    required: true
+
+  runtime_service_account_name:
+    description: Runtime service account name
+    required: true
+
+outputs:
+  deploy_service_account_email:
+    description: Full deployment service account email
+    value: ${{ steps.derive.outputs.deploy_service_account_email }}
+
+  runtime_service_account_email:
+    description: Full runtime service account email
+    value: ${{ steps.derive.outputs.runtime_service_account_email }}
+
+runs:
+  using: composite
+  steps:
+    - name: Derive service account emails
+      id: derive
+      shell: bash
+      env:
+        PROJECT_ID: ${{ inputs.project_id }}
+        DEPLOY_SA_NAME: ${{ inputs.deploy_service_account_name }}
+        RUNTIME_SA_NAME: ${{ inputs.runtime_service_account_name }}
+      run: |
+        set -euo pipefail
+
+        for value in "$PROJECT_ID" "$DEPLOY_SA_NAME" "$RUNTIME_SA_NAME"; do
+          if [[ -z "$value" || ! "$value" =~ ^[a-z][a-z0-9-]*[a-z0-9]$ ]]; then
+            echo "Invalid project ID or service account name."
+            exit 1
+          fi
+        done
+
+        DEPLOY_SA_EMAIL="${DEPLOY_SA_NAME}@${PROJECT_ID}.iam.gserviceaccount.com"
+        RUNTIME_SA_EMAIL="${RUNTIME_SA_NAME}@${PROJECT_ID}.iam.gserviceaccount.com"
+
+        {
+          echo "deploy_service_account_email=${DEPLOY_SA_EMAIL}"
+          echo "runtime_service_account_email=${RUNTIME_SA_EMAIL}"
+        } >> "$GITHUB_OUTPUT"
+
+        echo "Service account emails derived successfully."

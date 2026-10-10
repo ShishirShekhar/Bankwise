@@ -1,6 +1,7 @@
 name: Frontend CI
 
 on:
+  workflow_call:
   pull_request:
   push:
     branches:
@@ -50,6 +51,7 @@ jobs:
 
   frontend-build:
     name: frontend-build
+    if: github.event_name != 'workflow_call'
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository

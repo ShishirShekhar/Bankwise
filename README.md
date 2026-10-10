@@ -74,3 +74,15 @@ GitHub Actions runs `frontend-lint`, `frontend-typecheck`, `frontend-build`,
 `backend-lint`, and `backend-test` for pull requests and pushes to `main`. To make these checks
 block merges, configure the repository's branch protection or ruleset for
 `main` and require all five status checks.
+
+## Production deployment
+
+Publishing a GitHub release runs `.github/workflows/deploy-production.yaml`.
+After backend and frontend CI pass, the workflow builds and pushes the backend
+image, builds the production static frontend, deploys the backend to Cloud Run,
+then deploys the frontend to Firebase Hosting. Production project IDs and
+service settings are in `.github/config/production.yaml`; the Firebase project
+ID is configured separately from the Google Cloud project ID. Configure
+`GCP_WORKLOAD_IDENTITY_PROVIDER`, `NEXT_PUBLIC_FIREBASE_API_KEY`, and
+`NEXT_PUBLIC_FIREBASE_APP_ID` as GitHub Actions variables, with the Firebase
+web values available to the `production` environment.

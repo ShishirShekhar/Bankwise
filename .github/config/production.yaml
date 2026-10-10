@@ -1,0 +1,15 @@
+# .github/config/production.yaml
+
+gcp:
+  project_id: bankwise-510917
+  region: us-central1
+
+  deploy_service_account_name: bankwise-release-deployer
+  runtime_service_account_name: bankwise-api-runtime
+
+cloud_run:
+  service_name: bankwise-api
+  artifact_registry_repository: bankwise
+
+firebase:
+  project_id: bankwise-510917
