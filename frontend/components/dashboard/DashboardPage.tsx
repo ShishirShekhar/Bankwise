@@ -6,9 +6,15 @@ import { ProductCategories } from "@/components/dashboard/ProductCategories";
 import { WhyBankwise } from "@/components/dashboard/WhyBankwise";
 import { BankwiseQueryForm } from "@/components/shared/BankwiseQueryForm";
 import { useBankwiseQuery } from "@/hooks/use-bankwise-query";
+import { useRequireAuth } from "@/hooks/use-require-auth";
 
 export function DashboardPage() {
+  const checkingAuth = useRequireAuth("/dashboard");
   const { runQuery, loading, error } = useBankwiseQuery();
+
+  if (checkingAuth) {
+    return <main className="min-h-screen bg-[#f7f8fc]" aria-label="Checking sign-in" />;
+  }
 
   return (
     <main className="min-h-screen bg-[#f7f8fc] text-gray-900">

@@ -1,3 +1,5 @@
+import { apiFetch } from "@/lib/api-client";
+
 export type Source = {
   id?: string;
   type?: string;
@@ -77,11 +79,6 @@ export type AskResponse = {
   request_id?: string;
 };
 
-const API_BASE_URL = (process.env.NEXT_PUBLIC_BANKWISE_API_URL || "http://localhost:8080").replace(
-  /\/$/,
-  "",
-);
-
 const sensitiveField =
   /(\b(?:PAN|Aadhaar|account(?:\s+(?:no\.?|number))?|card(?:\s+(?:no\.?|number))?|CVV|UPI(?:\s+(?:ID|PIN))?|MPIN|OTP|PIN|password)\s*[:=#-]?\s*)([A-Za-z0-9@._+-]+(?:[ -][A-Za-z0-9]+)?)/gi;
 
@@ -98,24 +95,12 @@ export function redactSensitiveInput(query: string): string {
 }
 
 export async function askBankwise(query: string): Promise<AskResponse> {
-  let response: Response;
-  try {
-    response = await fetch(`${API_BASE_URL}/api/ask`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ query: redactSensitiveInput(query) }),
-    });
-  } catch {
-    throw new Error(
-      `Could not reach BankWise API at ${API_BASE_URL}. Check that the backend is running.`,
-    );
-  }
-
-  const payload = await response.json().catch(() => null);
-  if (!response.ok) {
-    throw new Error(payload?.detail || payload?.message || `Request failed (${response.status}).`);
-  }
-  return payload as AskResponse;
+  const response = await apiFetch("/api/ask", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ query: redactSensitiveInput(query) }),
+  });
+  return (await response.json()) as AskResponse;
 }
 
 export function formatINR(value: number | null | undefined): string {

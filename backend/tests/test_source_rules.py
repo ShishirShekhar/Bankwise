@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from fastapi.testclient import TestClient
@@ -25,8 +25,8 @@ def test_official_current_source_is_high_confidence():
         "source_type": "OFFICIAL_BANK_PAGE",
         "url": "https://bank.example/fd",
         "title": "Rates",
-        "retrieved_at": datetime.now(timezone.utc),
-        "verified_at": datetime.now(timezone.utc),
+        "retrieved_at": datetime.now(UTC),
+        "verified_at": datetime.now(UTC),
         "status": "ACTIVE",
     }
     assert freshness(source) == "HIGH"
@@ -37,7 +37,7 @@ def test_stale_source_is_not_high_confidence():
         "source_type": "OFFICIAL_BANK_PDF",
         "url": "https://bank.example/rates.pdf",
         "title": "Rates",
-        "retrieved_at": datetime.now(timezone.utc) - timedelta(days=365),
+        "retrieved_at": datetime.now(UTC) - timedelta(days=365),
         "status": "ACTIVE",
     }
     assert freshness(source) == "LOW"
@@ -75,7 +75,7 @@ def _source(**changes):
         "source_type": "OFFICIAL_BANK_PAGE",
         "url": "https://bank.example/fd",
         "title": "Rates",
-        "verified_at": datetime.now(timezone.utc),
+        "verified_at": datetime.now(UTC),
         "status": "ACTIVE",
         **changes,
     }
@@ -96,8 +96,8 @@ CONDITION = {
     "condition_value": "1%",
     "source_id": "bank-rates",
 }
-TODAY = datetime.now(timezone.utc).date()
-OLD = datetime.now(timezone.utc) - timedelta(days=365)
+TODAY = datetime.now(UTC).date()
+OLD = datetime.now(UTC) - timedelta(days=365)
 
 
 def test_source_issues_flag_stale_inactive_and_out_of_period_sources():
@@ -231,7 +231,12 @@ def test_low_confidence_rates_never_reach_calculations():
 
 
 def test_verification_run_reports_status_for_rates_conditions_and_sources():
-    records = TestClient(app).post("/api/verification/run").json()["records"]
+    client = TestClient(app)
+    csrf = client.get("/api/auth/csrf").json()["csrfToken"]
+    records = client.post(
+        "/api/verification/run",
+        headers={"Origin": "http://localhost:3000", "X-CSRF-Token": csrf},
+    ).json()["records"]
 
     fields = {record["field"] for record in records}
     assert {"rate", "source", "premature_withdrawal_policy"} <= fields

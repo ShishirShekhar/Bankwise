@@ -98,19 +98,34 @@ def test_calculation_endpoint_uses_the_same_outcomes():
     body = {"product_id": HDFC, "principal": 500000, "tenure_months": 24}
 
     assert (
-        client.post("/api/calculations/fd", json=body).json()
+        client.post(
+            "/api/calculations/fd",
+            json=body,
+            headers={
+                "Origin": "http://localhost:3000",
+                "X-CSRF-Token": client.get("/api/auth/csrf").json()["csrfToken"],
+            },
+        ).json()
         == (calculate_fd_tool(HDFC, 500000, 24)["result"])
     )
-    missing = client.post("/api/calculations/fd", json={**body, "product_id": "x"})
+    csrf = client.get("/api/auth/csrf").json()["csrfToken"]
+    missing = client.post(
+        "/api/calculations/fd",
+        json={**body, "product_id": "x"},
+        headers={"Origin": "http://localhost:3000", "X-CSRF-Token": csrf},
+    )
     assert missing.status_code == 404
     blocked = client.post(
         "/api/calculations/fd",
         json={**body, "product_id": "punjab-national-bank-domestic-fixed-deposit"},
+        headers={"Origin": "http://localhost:3000", "X-CSRF-Token": csrf},
     )
     assert blocked.status_code == 409
     assert (
         client.post(
-            "/api/calculations/fd", json={**body, "tenure_months": 200}
+            "/api/calculations/fd",
+            json={**body, "tenure_months": 200},
+            headers={"Origin": "http://localhost:3000", "X-CSRF-Token": csrf},
         ).status_code
         == 422
     )
