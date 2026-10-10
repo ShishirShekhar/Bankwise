@@ -1,6 +1,6 @@
 # Bankwise Python backend
 
-FastAPI backend for source-grounded FD comparison. Financial calculations live in `app/calculators`, separate from Gemini and ADK. BigQuery is the catalogue and verification data store. Firestore stores redacted decision-session state; it does not store the raw user query.
+FastAPI backend for source-grounded FD comparison. Financial calculations and user-facing explanations are deterministic and separate from optional AI evaluation tools. BigQuery is the production catalogue and verification data store. Firestore stores redacted decision-session state; it does not store the raw user query.
 
 ## Code layout
 
@@ -8,14 +8,14 @@ FastAPI backend for source-grounded FD comparison. Financial calculations live i
 - `app/api/` contains routers grouped by assistant, catalog/calculation, session, and operational endpoints. Shared repository providers are in `api/dependencies.py`.
 - `app/domain/` contains requirement parsing, source verification, product shaping, comparison, ID generation, and the validated `Bank`/`Product` models in `domain/models.py` (they mirror the `banks` and `products` tables; `from_row`/`to_row` convert to and from table rows). It does not define HTTP routes.
 - `app/calculators/` contains deterministic financial calculations.
-- `app/ai/` contains Gemini extraction, the conversational pipeline, and AI tool operations.
+- `app/ai/` contains optional Gemini requirement extraction and evaluation tools. The user request path currently uses deterministic parsing and does not call Gemini.
 - `app/repositories/` contains BigQuery and Firestore access plus the local JSON catalogue and in-memory sessions. Both catalogues expose `list_banks()` and `get_bank(id)` returning `Bank` models.
 
 `app/services.py` re-exports domain functions for older imports. New code should import directly from the relevant `app.domain` module.
 
 ## Local setup
 
-Requires Python 3.11 or newer, Google Cloud ADC credentials, and configured BigQuery/Firestore resources.
+Requires Python 3.11 or newer. Offline local development uses the checked-in JSON catalogue and in-memory sessions without Google Cloud credentials. Firebase and Google Cloud credentials are needed only when exercising those integrations.
 
 ```sh
 cd backend
@@ -26,13 +26,13 @@ cp .env.example .env
 uvicorn app.main:app --reload
 ```
 
-Copy `.env.example` to `.env` and set `GOOGLE_CLOUD_PROJECT`, `BIGQUERY_PROJECT`, `BIGQUERY_DATASET`, `BIGQUERY_LOCATION`, and `FIRESTORE_PROJECT`. Authenticate locally with `gcloud auth application-default login`. Apply [the BigQuery schema](sql/bigquery_schema.sql) after replacing `YOUR_PROJECT` and the dataset location. The catalogue intentionally starts empty. Add bank/product/rate/source records only after manual verification against official bank sources; rates without current HIGH confidence source metadata cannot be used by decision or calculation APIs.
+Copy `.env.example` to `.env` for local development. For Google Cloud integration work, set `GOOGLE_CLOUD_PROJECT`, `BIGQUERY_PROJECT`, `BIGQUERY_DATASET`, `BIGQUERY_LOCATION`, and `FIRESTORE_PROJECT`, then authenticate with `gcloud auth application-default login`. Apply [the BigQuery schema](sql/bigquery_schema.sql) after replacing `YOUR_PROJECT` and the dataset location. The production catalogue should contain only manually reviewed bank/product/rate/source records; rates without current HIGH confidence source metadata cannot be used by decision or calculation APIs.
 
 ### Firebase Authentication
 
-The frontend uses the Firebase Web SDK for email/password and Google popup sign-in with in-memory persistence. It sends the resulting Firebase ID token once to `POST /api/auth/session`; the backend verifies the token and recent `auth_time`, then sets a five-day HTTP-only session cookie. The cookie is named `bankwise_session` locally and `__session` in production so Firebase Hosting forwards it to Cloud Run. The frontend immediately signs out of the Web SDK. `GET /api/auth/me` reports the cookie-backed session. Every business API route, health endpoint, and API documentation endpoint requires a verified cookie; API docs are disabled. Only `GET /api/auth/csrf` and `POST /api/auth/session` are public so the browser can establish a session. Mutating requests require a signed, one-hour CSRF token from `GET /api/auth/csrf` in `X-CSRF-Token` and an allowed `Origin`; CSRF validation does not depend on a separate cookie because Firebase Hosting strips all cookies except `__session` on Cloud Run rewrites.
+The frontend uses the Firebase Web SDK for email/password and Google popup sign-in with in-memory persistence. It sends the resulting Firebase ID token once to `POST /api/auth/session`; the backend verifies the token and recent `auth_time`, then sets a five-day HTTP-only session cookie. The cookie is named `bankwise_session` locally and `__session` in production so Firebase Hosting forwards it to Cloud Run. The frontend immediately signs out of the Web SDK. `GET /api/auth/me` reports the cookie-backed session. Business API routes require a verified cookie. `GET /api/health` is public liveness only; API docs are disabled. `GET /api/auth/csrf` and `POST /api/auth/session` are public so the browser can establish a session. Mutating requests require a signed, one-hour CSRF token from `GET /api/auth/csrf` in `X-CSRF-Token` and an allowed `Origin`; CSRF validation does not depend on a separate cookie because Firebase Hosting strips all cookies except `__session` on Cloud Run rewrites.
 
-Set `ENVIRONMENT=local` for offline local JSON catalog and in-memory sessions. Set `ENVIRONMENT=production` on Cloud Run to use BigQuery, Firestore, secure cookies, and the `__session` cookie name. In production, provide `CSRF_SECRET` (at least 32 characters) through Secret Manager; do not put it in source control. Configure the frontend Firebase variables and keep `NEXT_PUBLIC_BANKWISE_API_URL` unset when `/api/**` is rewritten through Firebase Hosting. Set `CORS_ORIGINS` to the exact Hosting origin(s). Firebase Hosting forwards only the `__session` cookie to Cloud Run, so the production cookie name is required. For a directly addressed cross-site API instead of a Hosting rewrite, set `AUTH_COOKIE_SAMESITE=none` and keep `AUTH_COOKIE_SECURE=true`.
+Set `ENVIRONMENT=local` for offline local JSON catalog and in-memory sessions. The container defaults to `ENVIRONMENT=production`; production startup requires Google Cloud, BigQuery, Firebase project IDs, a strong `CSRF_SECRET`, and deployed-only `CORS_ORIGINS`. Supply secrets through Secret Manager. Configure the frontend Firebase variables and keep `NEXT_PUBLIC_BANKWISE_API_URL` unset when `/api/**` is rewritten through Firebase Hosting. Firebase Hosting forwards only the `__session` cookie to Cloud Run. For a directly addressed cross-site API instead of a Hosting rewrite, set `AUTH_COOKIE_SAMESITE=none` and keep `AUTH_COOKIE_SECURE=true`.
 
 Decision sessions include their Firebase UID as `user_id`; `/api/sessions/{session_id}` only returns a session to its owner.
 
@@ -40,7 +40,7 @@ Create the configured BigQuery dataset and its tables with `python -m scripts.cr
 
 ## Endpoints
 
-- `GET /api/health` (verified session required)
+- `GET /api/health` (public liveness probe; does not verify dependencies)
 - `GET /api/auth/csrf`, `POST /api/auth/session`, `GET /api/auth/me`, and `POST /api/auth/logout` manage the browser session.
 - `GET /api/products?category=FD&amount=500000&tenureMonths=24`
 - `GET /api/products/{id}` and `/api/products/{id}/sources`
@@ -51,7 +51,7 @@ Create the configured BigQuery dataset and its tables with `python -m scripts.cr
 - `GET /api/conflicts?status=OPEN` (or `RESOLVED`) lists source conflicts with both values and sources
 - `GET /api/sessions/{session_id}` (retrieves the sanitized state saved in Firestore)
 
-Requirement extraction uses Vertex AI when `GOOGLE_CLOUD_PROJECT` is configured and explicit fallback parsing otherwise. `POST /api/ask` performs product search, source verification, calculation, and comparison deterministically before invoking a single Google ADK explanation agent. The agent receives only the request's checked comparison context and cannot replace its calculations or trade-off metrics. If Google credentials/project configuration is missing, the API still returns its structured deterministic result and reports `ai.status` as `not_configured`. Check `/api/agent/health` for configuration status. For local Vertex AI calls, configure ADC credentials, set the project/location in `.env`, and enable Vertex AI in that project.
+`POST /api/ask` uses deterministic requirement parsing, source verification, calculation, comparison, and three-part explanation generation. It does not call Gemini on the user request path. The endpoint has a per-user, per-process request limit (`ASK_RATE_LIMIT`, default 10 per `ASK_RATE_WINDOW_SECONDS`, default 60 seconds); production must also apply a shared ingress rate limit such as Cloud Armor because Cloud Run can run multiple instances. `/api/agent/health` reports optional evaluation-tool configuration.
 
 RAG, Cloud Storage ingestion, automated external source fetching, and a curated-data write/import pipeline are not enabled yet. BigQuery access requires permission to create query jobs and read the configured dataset (typically BigQuery Job User plus dataset Data Viewer). Firestore access requires permission to read/write documents (typically Firestore User).
 
@@ -71,9 +71,9 @@ Sources carry the URL, type, title, retrieval/verification timestamps, and effec
 
 ## FD calculation tool and agent evaluations
 
-`app/domain/rates.py` selects a product's single eligible rate band and runs the deterministic calculator. The ADK `calculate_fd_tool`, `POST /api/calculations/fd`, and the comparison all use it, so the agent can never show an amount the comparison would refuse. The tool returns `status` `CALCULATED` with the calculator `result` unchanged (including `calculation_version`), or `INVALID_INPUT`, `MISSING`, `UNAVAILABLE`, `BLOCKED`, or `UNSUPPORTED` with a `reason` and no amount.
+`app/domain/rates.py` selects a product's single eligible rate band and runs the deterministic calculator. The ADK `calculate_fd_tool`, `POST /api/calculations/fd`, and the comparison share it, so an evaluation agent cannot show an amount the comparison would refuse. The tool returns `status` `CALCULATED` with the calculator `result` unchanged (including `calculation_version`), or `INVALID_INPUT`, `MISSING`, `UNAVAILABLE`, `BLOCKED`, or `UNSUPPORTED` with a `reason` and no amount. The current user request path does not invoke ADK.
 
-`evals/fd_calculation/` is an ADK evaluation set for the production calculation agent: each case expects a `calculate_fd_tool` call with exact arguments and an answer whose numbers come from the calculator (one case asks the agent to "assume 9%", one is a blocked product). `tests/test_fd_calculation_tool.py` checks the eval file against the calculator in CI without calling Gemini. To run the eval against Gemini, configure Vertex AI credentials and run:
+`evals/fd_calculation/` is an ADK evaluation set for the calculation tool: each case expects a `calculate_fd_tool` call with exact arguments and an answer whose numbers come from the calculator (one case asks the agent to "assume 9%", one is a blocked product). `tests/test_fd_calculation_tool.py` checks the eval file against the calculator in CI without calling Gemini. To run the eval against Gemini, configure Vertex AI credentials and run:
 
 ```sh
 RUN_AGENT_EVALS=1 GOOGLE_CLOUD_PROJECT=your-project python -m pytest tests/test_fd_calculation_tool.py -k eval_with_gemini
@@ -110,5 +110,5 @@ The local dataset records only `last_verified`, so `retrieved_at` is set to that
 
 ```sh
 docker build -t bankwise-api .
-docker run -p 8080:8080 -e PORT=8080 --env-file .env bankwise-api
+docker run -p 8080:8080 -e PORT=8080 -e ENVIRONMENT=local --env-file .env bankwise-api
 ```
