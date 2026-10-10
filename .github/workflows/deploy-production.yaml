@@ -1,0 +1,278 @@
+name: Production Deployment
+
+on:
+  release:
+    types:
+      - published
+
+permissions:
+  contents: read
+
+concurrency:
+  group: bankwise-production
+  cancel-in-progress: false
+
+jobs:
+  # -----------------------------------------------
+  # Load shared production values once
+  # -----------------------------------------------
+  production-config:
+    name: Load production configuration
+    runs-on: ubuntu-latest
+    outputs:
+      gcp_project_id: ${{ steps.config.outputs.project_id }}
+      firebase_project_id: ${{ steps.config.outputs.firebase_project_id }}
+      region: ${{ steps.config.outputs.region }}
+      service_name: ${{ steps.config.outputs.service_name }}
+      artifact_registry_repository: ${{ steps.config.outputs.artifact_registry_repository }}
+      deploy_service_account_email: ${{ steps.accounts.outputs.deploy_service_account_email }}
+      runtime_service_account_email: ${{ steps.accounts.outputs.runtime_service_account_email }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Load production configuration
+        id: config
+        uses: ./.github/actions/get-env-values
+        with:
+          environment: production
+
+      - name: Derive service account emails
+        id: accounts
+        uses: ./.github/actions/derive-service-accounts
+        with:
+          project_id: ${{ steps.config.outputs.project_id }}
+          deploy_service_account_name: ${{ steps.config.outputs.deploy_service_account_name }}
+          runtime_service_account_name: ${{ steps.config.outputs.runtime_service_account_name }}
+
+  # -----------------------------------------------
+  # 1. Backend CI
+  # -----------------------------------------------
+  backend-ci:
+    name: Backend CI
+    uses: ./.github/workflows/backend.yaml
+
+  frontend-ci:
+    name: Frontend CI
+    uses: ./.github/workflows/frontend.yaml
+
+  # -----------------------------------------------
+  # 2. Build backend after CI passes
+  # -----------------------------------------------
+  build-backend:
+    name: Build and push backend image
+    needs:
+      - backend-ci
+      - frontend-ci
+      - production-config
+
+    runs-on: ubuntu-latest
+    environment: production
+
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ needs.production-config.outputs.deploy_service_account_email }}
+          project_id: ${{ needs.production-config.outputs.gcp_project_id }}
+          create_credentials_file: true
+          export_environment_variables: true
+
+      - name: Set up Google Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker authentication
+        env:
+          REGION: ${{ needs.production-config.outputs.region }}
+        run: gcloud auth configure-docker "${REGION}-docker.pkg.dev" --quiet
+
+      - name: Build and push backend image
+        env:
+          PROJECT_ID: ${{ needs.production-config.outputs.gcp_project_id }}
+          REGION: ${{ needs.production-config.outputs.region }}
+          REPOSITORY: ${{ needs.production-config.outputs.artifact_registry_repository }}
+          SERVICE: ${{ needs.production-config.outputs.service_name }}
+        run: |
+          IMAGE="${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPOSITORY}/${SERVICE}:${GITHUB_SHA}"
+
+          docker build \
+            --file backend/Dockerfile \
+            --tag "$IMAGE" \
+            backend
+
+          docker push "$IMAGE"
+
+  # -----------------------------------------------
+  # 3. Build frontend after backend image
+  # -----------------------------------------------
+  frontend-production-build:
+    name: Production frontend build
+    needs:
+      - build-backend
+      - production-config
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        run: npm ci
+        working-directory: frontend
+
+      - name: Validate Firebase web configuration
+        env:
+          NEXT_PUBLIC_FIREBASE_API_KEY: ${{ vars.NEXT_PUBLIC_FIREBASE_API_KEY }}
+          NEXT_PUBLIC_FIREBASE_APP_ID: ${{ vars.NEXT_PUBLIC_FIREBASE_APP_ID }}
+        run: |
+          test -n "$NEXT_PUBLIC_FIREBASE_API_KEY" || {
+            echo "Missing NEXT_PUBLIC_FIREBASE_API_KEY"
+            exit 1
+          }
+
+          test -n "$NEXT_PUBLIC_FIREBASE_APP_ID" || {
+            echo "Missing NEXT_PUBLIC_FIREBASE_APP_ID"
+            exit 1
+          }
+
+      - name: Build frontend
+        run: npm run build
+        working-directory: frontend
+        env:
+          NEXT_PUBLIC_FIREBASE_API_KEY: ${{ vars.NEXT_PUBLIC_FIREBASE_API_KEY }}
+          NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: ${{ needs.production-config.outputs.firebase_project_id }}.firebaseapp.com
+          NEXT_PUBLIC_FIREBASE_PROJECT_ID: ${{ needs.production-config.outputs.firebase_project_id }}
+          NEXT_PUBLIC_FIREBASE_APP_ID: ${{ vars.NEXT_PUBLIC_FIREBASE_APP_ID }}
+
+      - name: Upload static frontend build
+        uses: actions/upload-artifact@v4
+        with:
+          name: bankwise-frontend-static
+          path: frontend/out/
+          if-no-files-found: error
+          retention-days: 1
+
+  # -----------------------------------------------
+  # 4. Deploy backend after both images are built
+  # -----------------------------------------------
+  deploy-backend:
+    name: Deploy Backend to Cloud Run
+    needs:
+      - build-backend
+      - frontend-production-build
+      - production-config
+
+    runs-on: ubuntu-latest
+    environment: production
+
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ needs.production-config.outputs.deploy_service_account_email }}
+          project_id: ${{ needs.production-config.outputs.gcp_project_id }}
+          create_credentials_file: true
+          export_environment_variables: true
+
+      - name: Set up Google Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Deploy backend to Cloud Run
+        uses: google-github-actions/deploy-cloudrun@v3
+        with:
+          service: ${{ needs.production-config.outputs.service_name }}
+          project_id: ${{ needs.production-config.outputs.gcp_project_id }}
+          region: ${{ needs.production-config.outputs.region }}
+          image: ${{ needs.production-config.outputs.region }}-docker.pkg.dev/${{ needs.production-config.outputs.gcp_project_id }}/${{ needs.production-config.outputs.artifact_registry_repository }}/${{ needs.production-config.outputs.service_name }}:${{ github.sha }}
+          service_account: ${{ needs.production-config.outputs.runtime_service_account_email }}
+          env_vars: |-
+            ENVIRONMENT=production
+            GOOGLE_CLOUD_PROJECT=${{ needs.production-config.outputs.gcp_project_id }}
+            GOOGLE_CLOUD_LOCATION=${{ needs.production-config.outputs.region }}
+            BIGQUERY_PROJECT=${{ needs.production-config.outputs.gcp_project_id }}
+            BIGQUERY_DATASET=bankwise
+            BIGQUERY_LOCATION=${{ needs.production-config.outputs.region }}
+            FIREBASE_PROJECT_ID=${{ needs.production-config.outputs.firebase_project_id }}
+            FIRESTORE_PROJECT=${{ needs.production-config.outputs.firebase_project_id }}
+            AUTH_COOKIE_SAMESITE=lax
+            CORS_ORIGINS=https://${{ needs.production-config.outputs.firebase_project_id }}.web.app,https://${{ needs.production-config.outputs.firebase_project_id }}.firebaseapp.com
+          secrets: |-
+            CSRF_SECRET=bankwise-csrf-secret:latest
+
+  # -----------------------------------------------
+  # 5. Deploy frontend after backend deployment
+  # -----------------------------------------------
+  deploy-frontend:
+    name: Deploy Frontend to Firebase Hosting
+    needs:
+      - backend-ci
+      - frontend-ci
+      - frontend-production-build
+      - deploy-backend
+      - production-config
+
+    runs-on: ubuntu-latest
+    environment: production
+
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ needs.production-config.outputs.deploy_service_account_email }}
+          project_id: ${{ needs.production-config.outputs.gcp_project_id }}
+          create_credentials_file: true
+          export_environment_variables: true
+
+      - name: Download static frontend build
+        uses: actions/download-artifact@v4
+        with:
+          name: bankwise-frontend-static
+          path: frontend/out/
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+
+      - name: Install Firebase CLI
+        run: npm install --global firebase-tools@15.33.0
+
+      - name: Deploy frontend to Firebase Hosting
+        run: |
+          firebase deploy \
+            --only hosting \
+            --project "${{ needs.production-config.outputs.firebase_project_id }}" \
+            --non-interactive

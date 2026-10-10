@@ -1,0 +1,99 @@
+name: Get Environment Values
+description: Load configuration values for the selected environment.
+
+inputs:
+  environment:
+    description: Target environment (dev or production)
+    required: true
+
+outputs:
+  environment:
+    description: Selected environment
+    value: ${{ steps.extract.outputs.environment }}
+
+  project_id:
+    description: Google Cloud project ID
+    value: ${{ steps.extract.outputs.project_id }}
+
+  firebase_project_id:
+    description: Firebase project ID
+    value: ${{ steps.extract.outputs.firebase_project_id }}
+
+  region:
+    description: Google Cloud region
+    value: ${{ steps.extract.outputs.region }}
+
+  deploy_service_account_name:
+    description: Deployment service account name
+    value: ${{ steps.extract.outputs.deploy_service_account_name }}
+
+  runtime_service_account_name:
+    description: Runtime service account name
+    value: ${{ steps.extract.outputs.runtime_service_account_name }}
+
+  service_name:
+    description: Cloud Run service name
+    value: ${{ steps.extract.outputs.service_name }}
+
+  artifact_registry_repository:
+    description: Artifact Registry repository
+    value: ${{ steps.extract.outputs.artifact_registry_repository }}
+
+runs:
+  using: composite
+  steps:
+    - name: Load environment configuration
+      id: extract
+      shell: bash
+      env:
+        TARGET_ENV: ${{ inputs.environment }}
+      run: |
+        ruby <<'RUBY'
+        require "yaml"
+
+        environment = ENV.fetch("TARGET_ENV")
+
+        allowed_environments = %w[dev production]
+        abort "Unsupported environment: #{environment}" unless
+          allowed_environments.include?(environment)
+
+        config_file = ".github/config/#{environment}.yaml"
+
+        abort "Configuration file not found: #{config_file}" unless
+          File.file?(config_file)
+
+        config = YAML.safe_load_file(config_file, aliases: false)
+        abort "Invalid configuration format" unless config.is_a?(Hash)
+
+        gcp = config.fetch("gcp")
+        firebase = config.fetch("firebase")
+        cloud_run = config.fetch("cloud_run")
+
+        values = {
+          "environment" => environment,
+          "project_id" => gcp.fetch("project_id"),
+          "firebase_project_id" => firebase.fetch("project_id"),
+          "region" => gcp.fetch("region"),
+          "deploy_service_account_name" =>
+            gcp.fetch("deploy_service_account_name"),
+          "runtime_service_account_name" =>
+            gcp.fetch("runtime_service_account_name"),
+          "service_name" => cloud_run.fetch("service_name"),
+          "artifact_registry_repository" =>
+            cloud_run.fetch("artifact_registry_repository")
+        }
+
+        values.each do |key, value|
+          unless value.is_a?(String) &&
+                 !value.strip.empty? &&
+                 !value.match?(/[\r\n]/)
+            abort "Invalid configuration value: #{key}"
+          end
+        end
+
+        File.open(ENV.fetch("GITHUB_OUTPUT"), "a") do |file|
+          values.each { |key, value| file.puts "#{key}=#{value}" }
+        end
+
+        puts "Loaded configuration from #{config_file}"
+        RUBY
