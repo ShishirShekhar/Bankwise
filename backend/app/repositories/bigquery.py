@@ -1,10 +1,13 @@
 """Read-only BigQuery repository for curated catalogue and verification data."""
 
+import logging
 import re
 from typing import Any
 
 from app.config import BIGQUERY_DATASET, BIGQUERY_LOCATION, BIGQUERY_PROJECT
 from app.domain.models import Bank
+
+logger = logging.getLogger("bankwise.integrations.bigquery")
 
 
 class BigQueryRepository:
@@ -27,6 +30,21 @@ class BigQueryRepository:
         self._conflict_cache = {}
         self._product_cache = {}
 
+    def _query(self, sql: str, **kwargs):
+        try:
+            return self.client.query(sql, **kwargs).result()
+        except Exception as exc:
+            logger.error(
+                "BigQuery operation failed",
+                extra={
+                    "event": "integration_error",
+                    "integration": "bigquery",
+                    "operation": "query",
+                    "error_type": type(exc).__name__,
+                },
+            )
+            raise
+
     def _rows(
         self, table: str, where: str = "", params: list | None = None
     ) -> list[dict[str, Any]]:
@@ -36,9 +54,9 @@ class BigQueryRepository:
         config = bigquery.QueryJobConfig(query_parameters=params or [])
         return [
             dict(row.items())
-            for row in self.client.query(
+            for row in self._query(
                 sql, job_config=config, location=BIGQUERY_LOCATION
-            ).result()
+            )
         ]
 
     def _one(self, table: str, identifier: str) -> dict[str, Any] | None:
@@ -49,9 +67,9 @@ class BigQueryRepository:
             query_parameters=[bigquery.ScalarQueryParameter("id", "STRING", identifier)]
         )
         rows = list(
-            self.client.query(
+            self._query(
                 sql, job_config=config, location=BIGQUERY_LOCATION
-            ).result()
+            )
         )
         return dict(rows[0].items()) if rows else None
 
@@ -87,9 +105,9 @@ class BigQueryRepository:
         )
         products = [
             self._hydrate(dict(row.items()))
-            for row in self.client.query(
+            for row in self._query(
                 sql, job_config=config, location=BIGQUERY_LOCATION
-            ).result()
+            )
         ]
         for product in products:
             self._product_cache[product["id"]] = product
@@ -126,11 +144,11 @@ class BigQueryRepository:
             f"WHERE {' AND '.join(filters)} LIMIT 1"
         )
         rows = list(
-            self.client.query(
+            self._query(
                 sql,
                 job_config=bigquery.QueryJobConfig(query_parameters=params),
                 location=BIGQUERY_LOCATION,
-            ).result()
+            )
         )
         if not rows:
             return None
@@ -148,11 +166,11 @@ class BigQueryRepository:
             sql = f"SELECT * FROM {self.prefix}.{table}` WHERE product_id=@product_id"
             return [
                 dict(row.items())
-                for row in self.client.query(
+                for row in self._query(
                     sql,
                     job_config=bigquery.QueryJobConfig(query_parameters=params),
                     location=BIGQUERY_LOCATION,
-                ).result()
+                )
             ]
 
         product["bank"] = {
@@ -193,11 +211,11 @@ class BigQueryRepository:
         sql = f"SELECT * FROM {self.prefix}.source_conflicts` WHERE {' AND '.join(filters)}"
         conflicts = [
             dict(row.items())
-            for row in self.client.query(
+            for row in self._query(
                 sql,
                 job_config=bigquery.QueryJobConfig(query_parameters=params),
                 location=BIGQUERY_LOCATION,
-            ).result()
+            )
         ]
         self._conflict_cache[cache_key] = conflicts
         return [

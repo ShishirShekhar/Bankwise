@@ -4,6 +4,7 @@ import type { Metadata } from "next";
 import type { ReactNode } from "react";
 
 import { AuthProvider } from "@/components/auth/AuthProvider";
+import { ClientErrorReporter } from "@/components/shared/ClientErrorReporter";
 
 export const metadata: Metadata = {
   title: "BankWise | Compare fixed deposits with confidence",
@@ -14,7 +15,10 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en" className="h-full antialiased">
       <body className="flex min-h-full flex-col">
-        <AuthProvider>{children}</AuthProvider>
+        <AuthProvider>
+          <ClientErrorReporter />
+          {children}
+        </AuthProvider>
       </body>
     </html>
   );
