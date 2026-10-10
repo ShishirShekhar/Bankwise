@@ -1,5 +1,6 @@
 """Firebase session bootstrap and browser-session routes."""
 
+import logging
 from typing import Annotated
 
 from fastapi import APIRouter, Cookie, Depends, HTTPException, Response
@@ -22,6 +23,7 @@ from app.firebase import (
 
 router = APIRouter()
 bootstrap_router = APIRouter()
+logger = logging.getLogger("bankwise.integrations.firebase_auth")
 SESSION_MAX_AGE_SECONDS = 5 * 24 * 60 * 60
 
 
@@ -66,6 +68,15 @@ def create_session(request: SessionRequest, response: Response):
     except RecentAuthenticationRequired as exc:
         raise HTTPException(401, "Recent Firebase sign-in is required") from exc
     except Exception as exc:
+        logger.error(
+            "Firebase session creation failed",
+            extra={
+                "event": "integration_error",
+                "integration": "firebase_auth",
+                "operation": "create_session",
+                "error_type": type(exc).__name__,
+            },
+        )
         raise HTTPException(401, "Could not verify Firebase sign-in") from exc
 
     response.set_cookie(

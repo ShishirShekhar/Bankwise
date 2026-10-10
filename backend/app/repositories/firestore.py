@@ -1,8 +1,11 @@
 """Firestore persistence for redacted decision-session state."""
 
+import logging
 from datetime import UTC, date, datetime, time
 
 from app.config import FIRESTORE_COLLECTION, FIRESTORE_DATABASE, FIRESTORE_PROJECT
+
+logger = logging.getLogger("bankwise.integrations.firestore")
 
 
 def _firestore_safe(value):
@@ -27,6 +30,22 @@ class FirestoreSessionRepository:
             )
         self.client = client
         self.collection = client.collection(FIRESTORE_COLLECTION)
+
+    @staticmethod
+    def _run(operation: str, call):
+        try:
+            return call()
+        except Exception as exc:
+            logger.error(
+                "Firestore operation failed",
+                extra={
+                    "event": "integration_error",
+                    "integration": "firestore",
+                    "operation": operation,
+                    "error_type": type(exc).__name__,
+                },
+            )
+            raise
 
     def save_decision(
         self,
@@ -58,11 +77,11 @@ class FirestoreSessionRepository:
                 "updated_at": firestore.SERVER_TIMESTAMP,
             }
         )
-        self.collection.document(session_id).set(record)
+        self._run("save_decision", lambda: self.collection.document(session_id).set(record))
         return record
 
     def get(self, session_id: str):
-        snapshot = self.collection.document(session_id).get()
+        snapshot = self._run("get_session", lambda: self.collection.document(session_id).get())
         return snapshot.to_dict() if snapshot.exists else None
 
     def get_for_user(self, session_id: str, user_id: str):
