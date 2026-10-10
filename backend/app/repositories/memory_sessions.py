@@ -1,7 +1,7 @@
 """Process-local session storage for the local environment."""
 
 from copy import deepcopy
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 
 class MemorySessionRepository:
@@ -17,7 +17,7 @@ class MemorySessionRepository:
         missing_information=None,
     ) -> dict:
         missing_information = missing_information or []
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         record = {
             "session_id": session_id,
             "user_id": user_id,

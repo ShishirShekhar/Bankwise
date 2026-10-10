@@ -1,6 +1,6 @@
 """Firestore persistence for redacted decision-session state."""
 
-from datetime import date, datetime, time, timezone
+from datetime import UTC, date, datetime, time
 
 from app.config import FIRESTORE_COLLECTION, FIRESTORE_DATABASE, FIRESTORE_PROJECT
 
@@ -9,7 +9,7 @@ def _firestore_safe(value):
     if isinstance(value, datetime):
         return value
     if isinstance(value, date):
-        return datetime.combine(value, time.min, tzinfo=timezone.utc)
+        return datetime.combine(value, time.min, tzinfo=UTC)
     if isinstance(value, dict):
         return {key: _firestore_safe(item) for key, item in value.items()}
     if isinstance(value, (list, tuple)):
