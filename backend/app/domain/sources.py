@@ -4,7 +4,7 @@ Every financial fact gets one ``VerificationStatus``. Only HIGH facts may be
 used as authoritative by decision logic.
 """
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from enum import StrEnum
 
 from app.config import SOURCE_MAX_AGE_DAYS
@@ -33,7 +33,7 @@ def _worst(*statuses: str) -> VerificationStatus:
 
 
 def _today():
-    return datetime.now(timezone.utc).date()
+    return datetime.now(UTC).date()
 
 
 def source_confidence(source: dict) -> str:
@@ -51,8 +51,8 @@ def source_is_stale(source: dict) -> bool:
     if not checked:
         return True
     if checked.tzinfo is None:
-        checked = checked.replace(tzinfo=timezone.utc)
-    return checked < datetime.now(timezone.utc) - timedelta(days=SOURCE_MAX_AGE_DAYS)
+        checked = checked.replace(tzinfo=UTC)
+    return checked < datetime.now(UTC) - timedelta(days=SOURCE_MAX_AGE_DAYS)
 
 
 def source_issues(source: dict) -> list[str]:

@@ -13,13 +13,19 @@ import { StructuredExplanation } from "@/components/compare/StructuredExplanatio
 import { TradeoffBanner } from "@/components/compare/TradeoffBanner";
 import { SiteHeader } from "@/components/shared/SiteHeader";
 import { useLastAsk } from "@/hooks/use-last-ask";
+import { useRequireAuth } from "@/hooks/use-require-auth";
 import { setSessionStorageValue } from "@/lib/session-storage";
 import { selectTradeoffOptions } from "@/lib/tradeoff-view";
 
 export function ComparisonPage() {
+  const checkingAuth = useRequireAuth("/compare");
   const router = useRouter();
   const result = useLastAsk();
   const { highestMaturity, alternative } = selectTradeoffOptions(result?.options ?? []);
+
+  if (checkingAuth) {
+    return <main className="min-h-screen bg-[#f7f8fc]" aria-label="Checking sign-in" />;
+  }
 
   return (
     <main className="min-h-screen bg-[#f7f8fc] text-gray-900">

@@ -34,12 +34,13 @@ def test_missing_requirements_return_clarification_without_running_adk(monkeypat
     sessions = FakeSessions()
 
     result = asyncio.run(
-        decision_workflow.run_decision_workflow("an FD", FakeCatalog(), sessions)
+        decision_workflow.run_decision_workflow("an FD", FakeCatalog(), sessions, "user-1")
     )
 
     assert result["clarification_needed"] == ["amount"]
     assert result["ai"]["status"] == "clarification_required"
     assert len(sessions.saved) == 1
+    assert sessions.saved[0][1] == "user-1"
 
 
 def test_complete_request_uses_adk_on_deterministic_comparison(monkeypatch):
@@ -75,7 +76,7 @@ def test_complete_request_uses_adk_on_deterministic_comparison(monkeypatch):
 
     result = asyncio.run(
         decision_workflow.run_decision_workflow(
-            "1 lakh for 1 year", FakeCatalog(), sessions
+            "1 lakh for 1 year", FakeCatalog(), sessions, "test-user"
         )
     )
 
@@ -84,3 +85,4 @@ def test_complete_request_uses_adk_on_deterministic_comparison(monkeypatch):
     assert result["sources"] == [{"id": "src-1", "title": "Official rate card"}]
     assert agent_calls[0][2] is comparison
     assert len(sessions.saved) == 1
+    assert sessions.saved[0][1] == "test-user"
