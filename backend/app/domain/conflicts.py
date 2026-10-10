@@ -8,7 +8,7 @@ both values and both sources until a person resolves it.
 """
 
 import re
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 OPEN = "OPEN"
 RESOLVED = "RESOLVED"
@@ -36,7 +36,7 @@ def _conflict_id(product_id: str, field_name: str, key: str, source_b: str) -> s
 
 def detect_conflicts(observations: list[dict], detected_at: datetime | None = None):
     """Return one OPEN conflict per observation that disagrees with the first one."""
-    detected_at = detected_at or datetime.now(timezone.utc)
+    detected_at = detected_at or datetime.now(UTC)
     groups: dict[tuple, list[dict]] = {}
     for observation in observations:
         group = (
@@ -104,7 +104,7 @@ def resolve_conflict(
         **conflict,
         "status": RESOLVED,
         "resolved_value": observed[normalize_value(resolved_value)],
-        "resolved_at": resolved_at or datetime.now(timezone.utc),
+        "resolved_at": resolved_at or datetime.now(UTC),
         "resolution_notes": notes.strip(),
     }
 

@@ -2,7 +2,7 @@
 
 import json
 import re
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 from pathlib import Path
 
 from app.domain.conflicts import (
@@ -28,7 +28,7 @@ def _as_date(value: str | None) -> date | None:
 def _as_datetime(value: str | None) -> datetime | None:
     if not value:
         return None
-    return datetime.combine(date.fromisoformat(value), datetime.min.time(), timezone.utc)
+    return datetime.combine(date.fromisoformat(value), datetime.min.time(), UTC)
 
 
 def _rate_from_row(row: dict, rate_id: str, source_id: str, terms: dict) -> dict:
