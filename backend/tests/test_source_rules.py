@@ -231,7 +231,12 @@ def test_low_confidence_rates_never_reach_calculations():
 
 
 def test_verification_run_reports_status_for_rates_conditions_and_sources():
-    records = TestClient(app).post("/api/verification/run").json()["records"]
+    client = TestClient(app)
+    csrf = client.get("/api/auth/csrf").json()["csrfToken"]
+    records = client.post(
+        "/api/verification/run",
+        headers={"Origin": "http://localhost:3000", "X-CSRF-Token": csrf},
+    ).json()["records"]
 
     fields = {record["field"] for record in records}
     assert {"rate", "source", "premature_withdrawal_policy"} <= fields

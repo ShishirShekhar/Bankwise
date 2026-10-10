@@ -7,7 +7,7 @@ from app.config import ENVIRONMENT
 
 @lru_cache(maxsize=1)
 def get_catalog():
-    """Use the verified product catalogue: BigQuery in production, LocalJson in development."""
+    """Use BigQuery in production and the local JSON catalogue locally."""
     if ENVIRONMENT == "production":
         from app.repositories.bigquery import BigQueryRepository
 
@@ -19,7 +19,7 @@ def get_catalog():
 
 @lru_cache(maxsize=1)
 def get_sessions():
-    """Persist redacted decision sessions: Firestore in production, Memory in development."""
+    """Use Firestore in production and in-memory sessions locally."""
     if ENVIRONMENT == "production":
         from app.repositories.firestore import FirestoreSessionRepository
 

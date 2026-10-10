@@ -31,6 +31,7 @@ class FirestoreSessionRepository:
     def save_decision(
         self,
         session_id: str,
+        user_id: str,
         requirements: dict,
         comparisons: list,
         missing_information=None,
@@ -41,6 +42,7 @@ class FirestoreSessionRepository:
         record = _firestore_safe(
             {
                 "session_id": session_id,
+                "user_id": user_id,
                 "requirements": requirements,
                 "product_ids": [item["product"]["id"] for item in comparisons],
                 "comparison": comparisons,
@@ -62,3 +64,10 @@ class FirestoreSessionRepository:
     def get(self, session_id: str):
         snapshot = self.collection.document(session_id).get()
         return snapshot.to_dict() if snapshot.exists else None
+
+    def get_for_user(self, session_id: str, user_id: str):
+        record = self.get(session_id)
+        if not record or record.get("user_id") != user_id:
+            return None
+        record.pop("user_id", None)
+        return record
