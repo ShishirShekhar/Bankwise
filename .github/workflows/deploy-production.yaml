@@ -14,11 +14,12 @@ concurrency:
 
 jobs:
   # -----------------------------------------------
-  # Load shared production values once
+  # Load shared production configuration
   # -----------------------------------------------
   production-config:
     name: Load production configuration
     runs-on: ubuntu-latest
+
     outputs:
       gcp_project_id: ${{ steps.config.outputs.project_id }}
       firebase_project_id: ${{ steps.config.outputs.firebase_project_id }}
@@ -53,12 +54,17 @@ jobs:
     name: Backend CI
     uses: ./.github/workflows/backend.yaml
 
+  # -----------------------------------------------
+  # 2. Frontend CI
+  # -----------------------------------------------
   frontend-ci:
     name: Frontend CI
     uses: ./.github/workflows/frontend.yaml
+    with:
+      skip_build: true
 
   # -----------------------------------------------
-  # 2. Build backend after CI passes
+  # 3. Build and push backend image
   # -----------------------------------------------
   build-backend:
     name: Build and push backend image
@@ -112,13 +118,14 @@ jobs:
           docker push "$IMAGE"
 
   # -----------------------------------------------
-  # 3. Build frontend after backend image
+  # 4. Build frontend static export
   # -----------------------------------------------
   frontend-production-build:
     name: Production frontend build
     needs:
       - build-backend
       - production-config
+
     runs-on: ubuntu-latest
     environment: production
 
@@ -170,7 +177,7 @@ jobs:
           retention-days: 1
 
   # -----------------------------------------------
-  # 4. Deploy backend after both images are built
+  # 5. Deploy backend to Cloud Run
   # -----------------------------------------------
   deploy-backend:
     name: Deploy Backend to Cloud Run
@@ -209,7 +216,9 @@ jobs:
           project_id: ${{ needs.production-config.outputs.gcp_project_id }}
           region: ${{ needs.production-config.outputs.region }}
           image: ${{ needs.production-config.outputs.region }}-docker.pkg.dev/${{ needs.production-config.outputs.gcp_project_id }}/${{ needs.production-config.outputs.artifact_registry_repository }}/${{ needs.production-config.outputs.service_name }}:${{ github.sha }}
-          service_account: ${{ needs.production-config.outputs.runtime_service_account_email }}
+          flags: >-
+            --service-account=${{ needs.production-config.outputs.runtime_service_account_email }}
+            --allow-unauthenticated
           env_vars: |-
             ENVIRONMENT=production
             GOOGLE_CLOUD_PROJECT=${{ needs.production-config.outputs.gcp_project_id }}
@@ -220,7 +229,7 @@ jobs:
             FIREBASE_PROJECT_ID=${{ needs.production-config.outputs.firebase_project_id }}
             FIRESTORE_PROJECT=${{ needs.production-config.outputs.firebase_project_id }}
             AUTH_COOKIE_SAMESITE=lax
-            CORS_ORIGINS=https://${{ needs.production-config.outputs.firebase_project_id }}.web.app,https://${{ needs.production-config.outputs.firebase_project_id }}.firebaseapp.com
+            CORS_ORIGINS=https://${{ needs.production-config.outputs.firebase_project_id }}.web.app\,https://${{ needs.production-config.outputs.firebase_project_id }}.firebaseapp.com
           secrets: |-
             CSRF_SECRET=bankwise-csrf-secret:latest
 
