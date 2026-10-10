@@ -1,7 +1,5 @@
 """Shared source grounded decision workflow used by natural language routes."""
 
-from app.ai.orchestrator import run_decision_agent
-from app.config import GOOGLE_CLOUD_PROJECT
 from app.domain.identifiers import new_id
 from app.domain.input import (
     extract_requirements_from_safe_query as extract_requirements,
@@ -12,9 +10,11 @@ from app.domain.input import (
 
 
 async def run_decision_workflow(query: str, catalog, sessions, user_id: str) -> dict:
-    """Build a deterministic comparison, then use ADK to explain checked results."""
+    """Build a deterministic comparison and persist only redacted decision data."""
     safe_query = redact_sensitive_input(query)
-    requirements = extract_requirements(safe_query)
+    # Deterministic parsing keeps request handling bounded and makes numeric
+    # requirements independent from model availability or output.
+    requirements = extract_requirements(safe_query, use_gemini=False)
     request_id = new_id("req")
     session_id = new_id("session")
 
@@ -37,10 +37,7 @@ async def run_decision_workflow(query: str, catalog, sessions, user_id: str) -> 
             "warnings": [],
             "sources": [],
             "clarification_needed": requirements.missing_information,
-            "ai": {
-                "provider": "Google ADK + Gemini",
-                "status": "clarification_required",
-            },
+            "ai": {"provider": "deterministic API", "status": "not_used"},
             "session_persisted": True,
         }
 
@@ -50,19 +47,10 @@ async def run_decision_workflow(query: str, catalog, sessions, user_id: str) -> 
     result = compare_products(
         catalog, product_ids, requirements.amount, requirements.duration_months
     )
-    explanation = await run_decision_agent(
-        safe_query, requirements.model_dump(), result
-    )
-
     sessions.save_decision(
         session_id, user_id, requirements.model_dump(), result["products"]
     )
 
-    ai_status = (
-        "completed"
-        if explanation
-        else ("unavailable" if GOOGLE_CLOUD_PROJECT else "not_configured")
-    )
     return {
         "request_id": request_id,
         "session_id": session_id,
@@ -81,12 +69,8 @@ async def run_decision_workflow(query: str, catalog, sessions, user_id: str) -> 
                 for source in item["product"]["sources"]
             }.values()
         ),
-        "explanation": explanation,
-        "ai": {
-            "provider": "Google ADK + Gemini",
-            "agent": "bankwise_decision_agent",
-            "status": ai_status,
-        },
+        "explanation": None,
+        "ai": {"provider": "deterministic API", "status": "not_used"},
         "clarification_needed": [],
         "session_persisted": True,
     }

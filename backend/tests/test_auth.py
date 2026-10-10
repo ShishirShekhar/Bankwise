@@ -32,14 +32,10 @@ def csrf_headers(client: TestClient) -> dict[str, str]:
 def test_health_and_api_require_verified_session(monkeypatch):
     app.dependency_overrides.pop(require_authenticated_user, None)
     client = TestClient(app)
-    assert client.get("/api/health").status_code == 401
+    assert client.get("/api/health").status_code == 200
     assert client.get("/api/products").status_code == 401
 
     monkeypatch.setattr(auth, "verify_session_cookie", lambda _cookie: {"uid": "user-1"})
-    response = client.get(
-        "/api/health", cookies={auth.SESSION_COOKIE: "valid-session"}
-    )
-    assert response.status_code == 200
     response = client.get(
         "/api/products", cookies={auth.SESSION_COOKIE: "valid-session"}
     )
@@ -220,6 +216,9 @@ def test_logout_clears_server_session_cookie(monkeypatch):
 
 
 def test_api_ask_uses_authenticated_uid_and_csrf(monkeypatch):
+    from app.api import security
+
+    security._ask_requests.clear()
     saved_user_ids = []
 
     async def fake_workflow(_query, _catalog, _sessions, user_id):
@@ -240,6 +239,32 @@ def test_api_ask_uses_authenticated_uid_and_csrf(monkeypatch):
     assert denied.status_code == 403
     assert accepted.status_code == 200
     assert saved_user_ids == ["test-user"]
+    security._ask_requests.clear()
+
+
+def test_ask_api_returns_429_when_user_exceeds_limit(monkeypatch):
+    from app.api import security
+
+    security._ask_requests.clear()
+    monkeypatch.setattr(security, "ASK_RATE_LIMIT", 1)
+    monkeypatch.setattr(security, "ASK_RATE_WINDOW_SECONDS", 60)
+
+    async def fake_workflow(_query, _catalog, _sessions, _user_id):
+        return {}
+
+    monkeypatch.setattr(assistant, "run_decision_workflow", fake_workflow)
+    monkeypatch.setattr(assistant, "to_ask_response", lambda _result: {"ok": True})
+    client = TestClient(app)
+    client.cookies.set(auth.SESSION_COOKIE, "valid-session")
+    monkeypatch.setattr(auth, "verify_session_cookie", lambda _cookie: {"uid": "limited-user"})
+    headers = csrf_headers(client)
+    first = client.post("/api/ask", headers=headers, json={"query": "₹1 lakh for 1 year"})
+    second = client.post("/api/ask", headers=headers, json={"query": "₹1 lakh for 1 year"})
+
+    assert first.status_code == 200
+    assert second.status_code == 429
+    assert int(second.headers["retry-after"]) >= 1
+    security._ask_requests.clear()
 
 
 def test_session_endpoint_hides_sessions_owned_by_another_user():

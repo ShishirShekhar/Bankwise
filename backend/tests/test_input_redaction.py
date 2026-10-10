@@ -34,6 +34,19 @@ def test_extracts_amounts_with_or_without_currency_prefix():
 
 
 @pytest.mark.parametrize(
+    ("query", "category"),
+    [
+        ("Compare a credit card for travel", "CREDIT_CARD"),
+        ("I need a savings account", "SAVINGS"),
+        ("I want a home loan", "LOAN"),
+        ("I have 5 lakh for 2 years", "FD"),
+    ],
+)
+def test_deterministically_classifies_supported_and_unsupported_categories(query, category):
+    assert extract_requirements(query, use_gemini=False).product_category == category
+
+
+@pytest.mark.parametrize(
     ("query", "expected"),
     [
         ("My CVV is 123", "My [REDACTED]"),

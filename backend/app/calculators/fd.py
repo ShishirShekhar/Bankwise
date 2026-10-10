@@ -1,4 +1,5 @@
-from decimal import ROUND_HALF_UP, Decimal
+import math
+from decimal import ROUND_HALF_UP, Decimal, DecimalException
 
 
 class CalculationError(ValueError):
@@ -16,9 +17,16 @@ def calculate_fd(
     Rate is an annual percentage (7.25 means 7.25%). The result is rounded to paise.
     This generic formula is not a substitute for bank-specific day-count or rounding rules.
     """
-    if principal <= 0 or tenure_months <= 0 or annual_rate < 0:
+    if (
+        not math.isfinite(principal)
+        or not math.isfinite(annual_rate)
+        or principal <= 0
+        or tenure_months <= 0
+        or tenure_months > 1200
+        or annual_rate < 0
+    ):
         raise CalculationError(
-            "Principal and tenure must be positive; rate cannot be negative"
+            "Principal and rate must be finite, tenure must be 1–1200 months, and rate cannot be negative"
         )
     if compounding_frequency is None or compounding_frequency <= 0:
         raise CalculationError(
@@ -31,11 +39,14 @@ def calculate_fd(
     # Decimal power requires an integer exponent, so use a high precision local context.
     from decimal import localcontext
 
-    with localcontext() as ctx:
-        ctx.prec = 40
-        maturity = p * (Decimal(1) + rate / n) ** (n * years)
-        maturity = maturity.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-    interest = (maturity - p).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+    try:
+        with localcontext() as ctx:
+            ctx.prec = 40
+            maturity = p * (Decimal(1) + rate / n) ** (n * years)
+            maturity = maturity.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        interest = (maturity - p).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+    except DecimalException as exc:
+        raise CalculationError("Inputs exceed the calculator's supported numeric range") from exc
     return {
         "principal": float(p.quantize(Decimal("0.01"))),
         "annual_rate_percent": float(Decimal(str(annual_rate))),

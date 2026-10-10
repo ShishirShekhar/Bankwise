@@ -1,6 +1,6 @@
 # Bankwise
 
-> AI-powered banking comparison and financial decision platform.
+> Source-grounded financial-product comparison and decision support.
 
 ## Problem
 
@@ -11,9 +11,9 @@ fees, liquidity and trade-offs is difficult.
 
 ## Solution
 
-Bankwise uses Gemini and Google Cloud to understand a user's financial goal,
-compare verified banking products, perform deterministic calculations,
-and explain the trade-offs with source transparency.
+Bankwise parses FD requirements, compares source-verified products, performs
+deterministic calculations, and explains trade-offs from verified result data.
+The current decision response does not use model-generated financial prose.
 
 ## Example
 
@@ -42,7 +42,7 @@ Supported:
 - Premature withdrawal comparison
 - Source verification
 - Conflict detection
-- AI explanations
+- Structured, deterministic explanations
 
 ## Architecture
 
@@ -53,7 +53,7 @@ Next.js
  ↓
 Cloud Run / FastAPI
  ↓
-Gemini + Google ADK
+Requirement parsing and decision API
  ↓
 Research / Calculation / Verification
  ↓
@@ -61,7 +61,7 @@ BigQuery catalogue + Firestore sessions
  ↓
 Decision Engine
  ↓
-Gemini Explanation
+Deterministic Explanation
 ```
 
 ## Backend
@@ -70,7 +70,7 @@ The Python FastAPI service is in [`backend/README.md`](backend/README.md). It re
 
 ## Continuous integration
 
-GitHub Actions runs `frontend-lint`, `frontend-build`, `backend-lint`, and
-`backend-test` for pull requests and pushes to `main`. To make these checks
+GitHub Actions runs `frontend-lint`, `frontend-typecheck`, `frontend-build`,
+`backend-lint`, and `backend-test` for pull requests and pushes to `main`. To make these checks
 block merges, configure the repository's branch protection or ruleset for
-`main` and require all four status checks.
+`main` and require all five status checks.

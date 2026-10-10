@@ -10,6 +10,25 @@ permissions:
   contents: read
 
 jobs:
+  frontend-typecheck:
+    name: frontend-typecheck
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install frontend dependencies
+        run: npm ci
+        working-directory: frontend
+      - name: Run TypeScript checks
+        run: npm run typecheck
+        working-directory: frontend
+
   frontend-lint:
     name: frontend-lint
     runs-on: ubuntu-latest

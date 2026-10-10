@@ -366,7 +366,8 @@
       "source_b": "PNB Domestic Term Deposit Rates (above 2 years to 3 years)",
       "note": "The local month-based tenure ranges overlap at 24 months although the source distinguishes tenure through exactly 2 years from tenure above 2 years.",
       "status": "OPEN",
-      "tenure_min_months": 24
+      "tenure_min_months": 24,
+      "tenure_max_months": 24
     }
   ]
 }
