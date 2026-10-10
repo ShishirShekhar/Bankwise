@@ -1,8 +1,23 @@
-import Link from "next/link";
+"use client";
 
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+
+import { useAuth } from "@/components/auth/AuthProvider";
 import { SiteHeader } from "@/components/shared/SiteHeader";
 
 export function DashboardHeader() {
+  const router = useRouter();
+  const { signOut } = useAuth();
+
+  async function handleSignOut() {
+    try {
+      await signOut();
+    } finally {
+      router.replace("/");
+    }
+  }
+
   return (
     <SiteHeader>
       <nav
@@ -16,12 +31,13 @@ export function DashboardHeader() {
           My Comparisons
         </span>
       </nav>
-      <span
-        className="flex h-9 w-9 items-center justify-center rounded-full bg-blue-100 text-sm font-semibold text-[#172554]"
-        aria-label="Demo user"
+      <button
+        type="button"
+        onClick={() => void handleSignOut()}
+        className="rounded-xl border border-gray-200 px-4 py-2 text-sm font-semibold hover:bg-gray-50"
       >
-        U
-      </span>
+        Sign out
+      </button>
     </SiteHeader>
   );
 }
