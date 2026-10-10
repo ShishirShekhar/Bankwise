@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 
 import { LandingHero } from "@/components/landing/LandingHero";
 import { BankwiseQueryForm } from "@/components/shared/BankwiseQueryForm";
@@ -9,21 +8,14 @@ import { SiteHeader } from "@/components/shared/SiteHeader";
 import { TrustHighlights } from "@/components/shared/TrustHighlights";
 import { useBankwiseQuery } from "@/hooks/use-bankwise-query";
 import { redactSensitiveInput } from "@/lib/bankwise";
-import { setSessionStorageValue } from "@/lib/session-storage";
 
 const exampleQueries = ["₹5 lakh for 2 years with early withdrawal", "₹2 lakh for 1 year"];
 
 export function LandingPage() {
-  const router = useRouter();
   const { runQuery, loading, error } = useBankwiseQuery();
 
   function submitQuery(query: string) {
     const safeQuery = redactSensitiveInput(query);
-    if (window.sessionStorage.getItem("bankwise:authenticated") !== "true") {
-      setSessionStorageValue("bankwise:pending-query", safeQuery);
-      router.push("/login?redirect=/compare");
-      return;
-    }
     return runQuery(safeQuery);
   }
 

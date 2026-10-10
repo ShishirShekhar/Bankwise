@@ -11,7 +11,7 @@ from app.domain.input import (
 )
 
 
-async def run_decision_workflow(query: str, catalog, sessions) -> dict:
+async def run_decision_workflow(query: str, catalog, sessions, user_id: str) -> dict:
     """Build a deterministic comparison, then use ADK to explain checked results."""
     safe_query = redact_sensitive_input(query)
     requirements = extract_requirements(safe_query)
@@ -21,6 +21,7 @@ async def run_decision_workflow(query: str, catalog, sessions) -> dict:
     if requirements.missing_information:
         sessions.save_decision(
             session_id,
+            user_id,
             requirements.model_dump(),
             [],
             requirements.missing_information,
@@ -53,7 +54,9 @@ async def run_decision_workflow(query: str, catalog, sessions) -> dict:
         safe_query, requirements.model_dump(), result
     )
 
-    sessions.save_decision(session_id, requirements.model_dump(), result["products"])
+    sessions.save_decision(
+        session_id, user_id, requirements.model_dump(), result["products"]
+    )
 
     ai_status = (
         "completed"
