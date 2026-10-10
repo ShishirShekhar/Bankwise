@@ -6,6 +6,7 @@ from typing import Annotated, Any
 from fastapi import APIRouter, Depends, HTTPException
 
 from app.api.dependencies import get_catalog
+from app.api.security import require_csrf
 from app.config import (
     BIGQUERY_PROJECT,
     ENVIRONMENT,
@@ -32,7 +33,7 @@ def health():
     return {"status": "healthy"}
 
 
-@router.post("/api/verification/run")
+@router.post("/api/verification/run", dependencies=[Depends(require_csrf)])
 def verification_run(
     catalog: Annotated[Any, Depends(get_catalog)],
 ):

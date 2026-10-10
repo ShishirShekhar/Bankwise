@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 
+import { useRequireAuth } from "@/hooks/use-require-auth";
 import type { AskOption, AskResponse } from "@/lib/bankwise";
 import { formatDuration, formatINR } from "@/lib/bankwise";
 import { useSessionStorageValue } from "@/lib/session-storage";
@@ -34,6 +35,7 @@ function SourceLink({
 }
 
 export default function ProductDetails() {
+  const checkingAuth = useRequireAuth("/product");
   const selectedOption = useSessionStorageValue("bankwise:selected-option");
   const savedResult = useSessionStorageValue("bankwise:last-ask");
   let option: AskOption | null = null;
@@ -47,6 +49,10 @@ export default function ProductDetails() {
   }
 
   const requirements = result?.requirements;
+
+  if (checkingAuth) {
+    return <main className="min-h-screen bg-[#f7f8fc]" aria-label="Checking sign-in" />;
+  }
 
   return (
     <main className="min-h-screen bg-[#f7f8fc] text-gray-900">
