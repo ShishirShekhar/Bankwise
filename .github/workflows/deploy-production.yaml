@@ -181,6 +181,8 @@ jobs:
           NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: ${{ needs.production-config.outputs.firebase_project_id }}.firebaseapp.com
           NEXT_PUBLIC_FIREBASE_PROJECT_ID: ${{ needs.production-config.outputs.firebase_project_id }}
           NEXT_PUBLIC_FIREBASE_APP_ID: ${{ vars.NEXT_PUBLIC_FIREBASE_APP_ID }}
+          # Keep API requests same-origin so Firebase Hosting applies its /api rewrite.
+          NEXT_PUBLIC_BANKWISE_API_URL: ""
 
       - name: Upload static frontend build
         uses: actions/upload-artifact@v4
