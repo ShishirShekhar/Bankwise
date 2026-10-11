@@ -102,16 +102,16 @@
       "deposit_limit": "Below ₹3 crore",
       "tenure_min_months": 24,
       "tenure_max_months": 35,
-      "interest_rate": 6.45,
-      "senior_citizen_rate": 6.95,
+      "interest_rate": 6.4,
+      "senior_citizen_rate": 6.9,
       "premature_withdrawal_allowed": true,
       "premature_withdrawal_penalty": null,
       "source_name": "SBI Retail Domestic Term Deposits",
       "source_reference": "SBI official retail domestic term deposit rate page",
-      "source_effective_date": "2025-07-15",
+      "source_effective_date": "2025-12-15",
       "last_verified": "2026-10-04",
       "freshness_status": "verify_before_production",
-      "calculation_note": "Rate is for the 2 years to less than 3 years slab."
+      "calculation_note": "SBI's current official rate table lists 6.40% for 2 years to less than 3 years, effective 15 December 2025. The older 6.45% value was superseded."
     },
     {
       "bank_name": "SBI",
@@ -185,9 +185,9 @@
       "source_name": "HDFC Bank FD Interest Rates",
       "source_reference": "HDFC Bank official FD interest-rate page",
       "source_effective_date": "2026-08-19",
-      "last_verified": "2026-10-04",
+      "last_verified": "2026-10-11",
       "freshness_status": "current_source",
-      "calculation_note": "Rate applies to the 21 months to 2 years and 2 years 1 day to less than 3 years buckets as applicable."
+      "calculation_note": "HDFC's official rate table, applicable from 19 August 2026, lists 6.45% for 21 months to 2 years and the adjacent 2 years 1 day to 3 years buckets."
     },
 
     {
@@ -203,8 +203,8 @@
       "premature_withdrawal_penalty": 1.0,
       "source_name": "ICICI Bank FD Interest Rates",
       "source_reference": "ICICI Bank official FD interest-rate page",
-      "source_effective_date": "2026-09-11",
-      "last_verified": "2026-10-04",
+      "source_effective_date": "2026-10-09",
+      "last_verified": "2026-10-11",
       "freshness_status": "current_source",
       "calculation_note": "Rate applies to the 1 year to less than 18 months slab."
     },
@@ -221,8 +221,8 @@
       "premature_withdrawal_penalty": 1.0,
       "source_name": "ICICI Bank FD Interest Rates",
       "source_reference": "ICICI Bank official FD interest-rate page",
-      "source_effective_date": "2026-09-11",
-      "last_verified": "2026-10-04",
+      "source_effective_date": "2026-10-09",
+      "last_verified": "2026-10-11",
       "freshness_status": "current_source",
       "calculation_note": "Rate applies to the 18 months to 2 years slab."
     },
@@ -239,8 +239,8 @@
       "premature_withdrawal_penalty": 1.0,
       "source_name": "ICICI Bank FD Interest Rates",
       "source_reference": "ICICI Bank official FD interest-rate page",
-      "source_effective_date": "2026-09-11",
-      "last_verified": "2026-10-04",
+      "source_effective_date": "2026-10-09",
+      "last_verified": "2026-10-11",
       "freshness_status": "current_source",
       "calculation_note": "Rate applies to the 2 years 1 day to 3 years slab."
     },
@@ -316,7 +316,7 @@
       "source_effective_date": "2026-06-01",
       "last_verified": "2026-10-04",
       "freshness_status": "verify_before_production",
-      "calculation_note": "Rate applies to 667 days to 2 years."
+      "calculation_note": "The current PNB official table lists 6.25% for exactly 1 year and 6.30% for above 1 year to 389 days and 667 days to 2 years. This 12-24 month band combines different rates and must be split or kept blocked."
     },
     {
       "bank_name": "Punjab National Bank",
@@ -352,7 +352,7 @@
       "source_effective_date": "2026-06-01",
       "last_verified": "2026-10-04",
       "freshness_status": "verify_before_production",
-      "calculation_note": "Rate applies to above 3 years to 1203 days and 1205 days to 5 years; exact tenure slab should be checked."
+      "calculation_note": "The current PNB official table lists 6.35% for above 3 years to 1203 days and 1205 days to 5 years, but 6.30% for exactly 1204 days. This month band spans both values and must be split or kept blocked."
     }
   ],
   "source_conflicts": [
