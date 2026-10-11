@@ -48,7 +48,7 @@ Route files under `app/` stay thin and delegate to page compositions in `compone
 
 Run `npm run lint`, `npm run typecheck`, and `npm run build` from this directory before submitting frontend changes.
 
-Set `NEXT_PUBLIC_BANKWISE_API_URL` to the backend origin locally (defaults to `http://localhost:8080`); leave it unset for same-origin production requests. Copy `.env.example` to `.env.local` and set the Firebase Web App values. Enable Email/Password and Google providers and configure Authorized domains in Firebase. The backend verifies ID tokens and issues the session cookie; see `../backend/README.md`.
+Set `NEXT_PUBLIC_BANKWISE_API_URL` to the backend origin locally (defaults to `http://localhost:8080`). Production builds read the backend service URL from `cloud_run.url` in `.github/config/production.yaml`. Since requests go directly to Cloud Run, production must keep the Firebase Hosting origins in backend `CORS_ORIGINS` and use secure cross-site cookies (`AUTH_COOKIE_SAMESITE=none`, `AUTH_COOKIE_SECURE=true`). Copy `.env.example` to `.env.local` and set the Firebase Web App values. Enable Email/Password and Google providers and configure Authorized domains in Firebase. The backend verifies ID tokens and issues the session cookie; see `../backend/README.md`.
 
 Production Firebase Hosting serves the static export in `out/`, routes `/api/**` to the Cloud Run service, and applies the security headers in the repository root `firebase.json`. Keep its service name and region aligned with `.github/config/production.yaml`.
 

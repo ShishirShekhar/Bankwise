@@ -39,6 +39,66 @@ outputs:
     description: Artifact Registry repository
     value: ${{ steps.extract.outputs.artifact_registry_repository }}
 
+  gemini_model:
+    description: Gemini model
+    value: ${{ steps.extract.outputs.gemini_model }}
+
+  google_genai_use_vertexai:
+    description: Use Vertex AI with the Google GenAI SDK
+    value: ${{ steps.extract.outputs.google_genai_use_vertexai }}
+
+  google_cloud_location:
+    description: Google Cloud location for Vertex AI
+    value: ${{ steps.extract.outputs.google_cloud_location }}
+
+  bigquery_dataset:
+    description: BigQuery dataset
+    value: ${{ steps.extract.outputs.bigquery_dataset }}
+
+  bigquery_location:
+    description: BigQuery dataset location
+    value: ${{ steps.extract.outputs.bigquery_location }}
+
+  firestore_database:
+    description: Firestore database
+    value: ${{ steps.extract.outputs.firestore_database }}
+
+  firestore_collection:
+    description: Firestore session collection
+    value: ${{ steps.extract.outputs.firestore_collection }}
+
+  source_max_age_days:
+    description: Maximum source age in days
+    value: ${{ steps.extract.outputs.source_max_age_days }}
+
+  ask_rate_limit:
+    description: Ask requests allowed per rate window
+    value: ${{ steps.extract.outputs.ask_rate_limit }}
+
+  ask_rate_window_seconds:
+    description: Ask rate limit window in seconds
+    value: ${{ steps.extract.outputs.ask_rate_window_seconds }}
+
+  log_level:
+    description: Backend log level
+    value: ${{ steps.extract.outputs.log_level }}
+
+  auth_cookie_secure:
+    description: Whether auth cookies require HTTPS
+    value: ${{ steps.extract.outputs.auth_cookie_secure }}
+
+  auth_cookie_samesite:
+    description: Auth cookie SameSite policy
+    value: ${{ steps.extract.outputs.auth_cookie_samesite }}
+
+  cors_origins:
+    description: Allowed browser origins
+    value: ${{ steps.extract.outputs.cors_origins }}
+
+  cloud_run_url:
+    description: Cloud Run service URL for frontend API requests
+    value: ${{ steps.extract.outputs.cloud_run_url }}
+
 runs:
   using: composite
   steps:
@@ -68,6 +128,7 @@ runs:
         gcp = config.fetch("gcp")
         firebase = config.fetch("firebase")
         cloud_run = config.fetch("cloud_run")
+        runtime = cloud_run.fetch("runtime")
 
         values = {
           "environment" => environment,
@@ -80,7 +141,25 @@ runs:
             gcp.fetch("runtime_service_account_name"),
           "service_name" => cloud_run.fetch("service_name"),
           "artifact_registry_repository" =>
-            cloud_run.fetch("artifact_registry_repository")
+            cloud_run.fetch("artifact_registry_repository"),
+          "gemini_model" => runtime.fetch("gemini_model"),
+          "google_genai_use_vertexai" =>
+            runtime.fetch("google_genai_use_vertexai").to_s,
+          "google_cloud_location" => runtime.fetch("google_cloud_location"),
+          "bigquery_dataset" => runtime.fetch("bigquery_dataset"),
+          "bigquery_location" => runtime.fetch("bigquery_location"),
+          "firestore_database" => runtime.fetch("firestore_database"),
+          "firestore_collection" => runtime.fetch("firestore_collection"),
+          "source_max_age_days" => runtime.fetch("source_max_age_days").to_s,
+          "ask_rate_limit" => runtime.fetch("ask_rate_limit").to_s,
+          "ask_rate_window_seconds" =>
+            runtime.fetch("ask_rate_window_seconds").to_s,
+          "log_level" => runtime.fetch("log_level"),
+          "auth_cookie_secure" =>
+            runtime.fetch("auth_cookie_secure").to_s,
+          "auth_cookie_samesite" => runtime.fetch("auth_cookie_samesite"),
+          "cors_origins" => runtime.fetch("cors_origins").join("\\,"),
+          "cloud_run_url" => cloud_run.fetch("url")
         }
 
         values.each do |key, value|
