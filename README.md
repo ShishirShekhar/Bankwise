@@ -85,4 +85,9 @@ service settings are in `.github/config/production.yaml`; the Firebase project
 ID is configured separately from the Google Cloud project ID. Configure
 `GCP_WORKLOAD_IDENTITY_PROVIDER`, `NEXT_PUBLIC_FIREBASE_API_KEY`, and
 `NEXT_PUBLIC_FIREBASE_APP_ID` as GitHub Actions variables, with the Firebase
-web values available to the `production` environment.
+web values available to the `production` environment. Non-sensitive backend
+runtime settings are in the `cloud_run.runtime` section of
+`.github/config/production.yaml`, including the allowed `cors_origins`, and are
+passed to Cloud Run by the config loader. `CSRF_SECRET` remains a Google Secret
+Manager secret; project IDs and Cloud Run region also come from
+`.github/config/production.yaml`.

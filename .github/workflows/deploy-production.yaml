@@ -26,6 +26,20 @@ jobs:
       region: ${{ steps.config.outputs.region }}
       service_name: ${{ steps.config.outputs.service_name }}
       artifact_registry_repository: ${{ steps.config.outputs.artifact_registry_repository }}
+      gemini_model: ${{ steps.config.outputs.gemini_model }}
+      google_genai_use_vertexai: ${{ steps.config.outputs.google_genai_use_vertexai }}
+      google_cloud_location: ${{ steps.config.outputs.google_cloud_location }}
+      bigquery_dataset: ${{ steps.config.outputs.bigquery_dataset }}
+      bigquery_location: ${{ steps.config.outputs.bigquery_location }}
+      firestore_database: ${{ steps.config.outputs.firestore_database }}
+      firestore_collection: ${{ steps.config.outputs.firestore_collection }}
+      source_max_age_days: ${{ steps.config.outputs.source_max_age_days }}
+      ask_rate_limit: ${{ steps.config.outputs.ask_rate_limit }}
+      ask_rate_window_seconds: ${{ steps.config.outputs.ask_rate_window_seconds }}
+      log_level: ${{ steps.config.outputs.log_level }}
+      auth_cookie_secure: ${{ steps.config.outputs.auth_cookie_secure }}
+      auth_cookie_samesite: ${{ steps.config.outputs.auth_cookie_samesite }}
+      cors_origins: ${{ steps.config.outputs.cors_origins }}
       deploy_service_account_email: ${{ steps.accounts.outputs.deploy_service_account_email }}
       runtime_service_account_email: ${{ steps.accounts.outputs.runtime_service_account_email }}
 
@@ -222,14 +236,23 @@ jobs:
           env_vars: |-
             ENVIRONMENT=production
             GOOGLE_CLOUD_PROJECT=${{ needs.production-config.outputs.gcp_project_id }}
-            GOOGLE_CLOUD_LOCATION=${{ needs.production-config.outputs.region }}
+            GOOGLE_CLOUD_LOCATION=${{ needs.production-config.outputs.google_cloud_location }}
+            GEMINI_MODEL=${{ needs.production-config.outputs.gemini_model }}
+            GOOGLE_GENAI_USE_VERTEXAI=${{ needs.production-config.outputs.google_genai_use_vertexai }}
             BIGQUERY_PROJECT=${{ needs.production-config.outputs.gcp_project_id }}
-            BIGQUERY_DATASET=bankwise
-            BIGQUERY_LOCATION=${{ needs.production-config.outputs.region }}
+            BIGQUERY_DATASET=${{ needs.production-config.outputs.bigquery_dataset }}
+            BIGQUERY_LOCATION=${{ needs.production-config.outputs.bigquery_location }}
             FIREBASE_PROJECT_ID=${{ needs.production-config.outputs.firebase_project_id }}
             FIRESTORE_PROJECT=${{ needs.production-config.outputs.firebase_project_id }}
-            AUTH_COOKIE_SAMESITE=lax
-            CORS_ORIGINS=https://${{ needs.production-config.outputs.firebase_project_id }}.web.app\,https://${{ needs.production-config.outputs.firebase_project_id }}.firebaseapp.com
+            FIRESTORE_DATABASE=${{ needs.production-config.outputs.firestore_database }}
+            FIRESTORE_COLLECTION=${{ needs.production-config.outputs.firestore_collection }}
+            SOURCE_MAX_AGE_DAYS=${{ needs.production-config.outputs.source_max_age_days }}
+            ASK_RATE_LIMIT=${{ needs.production-config.outputs.ask_rate_limit }}
+            ASK_RATE_WINDOW_SECONDS=${{ needs.production-config.outputs.ask_rate_window_seconds }}
+            LOG_LEVEL=${{ needs.production-config.outputs.log_level }}
+            AUTH_COOKIE_SECURE=${{ needs.production-config.outputs.auth_cookie_secure }}
+            AUTH_COOKIE_SAMESITE=${{ needs.production-config.outputs.auth_cookie_samesite }}
+            CORS_ORIGINS=${{ needs.production-config.outputs.cors_origins }}
           secrets: |-
             CSRF_SECRET=bankwise-csrf-secret:latest
 
