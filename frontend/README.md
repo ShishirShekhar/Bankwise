@@ -1,55 +1,31 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Bankwise frontend
 
-## Getting Started
+Static-export Next.js application for the Bankwise FD comparison journey. Start with the root [README](../README.md), then see [product behavior](../docs/product-specification.md), [architecture](../docs/architecture.md), [API contract](../docs/api.md), and [deployment](../docs/deployment.md).
 
-First, run the development server:
+## Local development
 
-```bash
+```sh
+npm ci
+cp .env.example .env.local
+# Fill in Firebase web app values in .env.local
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+The local API origin defaults to `http://localhost:8080`. Start the backend separately. A Firebase project with Email/Password and Google sign-in enabled is needed to exercise browser authentication. Do not commit `.env.local`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Checks
 
-The UI uses system font stacks so production builds do not depend on downloading fonts.
+```sh
+npm run lint
+npm run typecheck
+npm run build
+```
 
-## Learn More
+## Code map
 
-To learn more about Next.js, take a look at the following resources:
+- `app/`: route entry points (`/`, `/login`, `/compare`, `/dashboard`).
+- `components/`: page compositions and reusable UI grouped by flow.
+- `hooks/`: auth gating and comparison/session flow.
+- `lib/`: API client, auth, input redaction, formatting and typed view adapters.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
-
-## BankWise routes
-
-- `/` is the public Fixed Deposit comparison landing page. Submitted queries are redacted and held in session storage while the visitor signs in.
-- `/login` uses Firebase Web SDK email/password sign-in, account creation, and Google popup sign-in. The ID token is exchanged once for a FastAPI HTTP-only session cookie, then Firebase client state is cleared.
-- `/compare` shows API-returned deterministic gains and give-ups, sourced product details, and the structured explanation.
-- `/dashboard` keeps Fixed Deposits available and labels Savings Accounts, Loans, and Credit Cards as coming soon.
-
-## Frontend structure
-
-Route files under `app/` stay thin and delegate to page compositions in `components/`. Components are grouped by flow (`landing`, `auth`, `compare`, and `dashboard`), with reusable brand, query-form, and trust components in `components/shared/`. Query execution and result-session access live in `hooks/`; API types, redaction, formatting, and trade-off selection live in `lib/`.
-
-Run `npm run lint`, `npm run typecheck`, and `npm run build` from this directory before submitting frontend changes.
-
-Set `NEXT_PUBLIC_BANKWISE_API_URL` to the backend origin locally (defaults to `http://localhost:8080`). Production builds read the backend service URL from `cloud_run.url` in `.github/config/production.yaml`. Since requests go directly to Cloud Run, production must keep the Firebase Hosting origins in backend `CORS_ORIGINS` and use secure cross-site cookies (`AUTH_COOKIE_SAMESITE=none`, `AUTH_COOKIE_SECURE=true`). Copy `.env.example` to `.env.local` and set the Firebase Web App values. Enable Email/Password and Google providers and configure Authorized domains in Firebase. The backend verifies ID tokens and issues the session cookie; see `../backend/README.md`.
-
-Production Firebase Hosting serves the static export in `out/`, routes `/api/**` to the Cloud Run service, and applies the security headers in the repository root `firebase.json`. Keep its service name and region aligned with `.github/config/production.yaml`.
-
-In production, a small Firebase Analytics event reports browser runtime errors, unhandled promise rejections, API 5xx responses, and network failures. It sends only a fixed error category, an allowlisted page name, and (for API 5xx) the random request ID; it never sends error text, stack traces, URL parameters, user identity, or form contents. Events are disabled in development and when `NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID` is unset. API failures are mapped to fixed user-safe messages; backend details are ignored. For API troubleshooting, correlate the event's `request_id` with Cloud Run structured logs in Cloud Logging. Firebase Hosting request logs cover hosting requests and rewrites, while Cloud Run logs contain API request diagnostics.
+The frontend renders backend-calculated amounts and trade-off metrics. Do not duplicate authoritative financial calculations in browser code. Production builds a static export in `out/`; Firebase Hosting rewrites `/api/**` to Cloud Run.
