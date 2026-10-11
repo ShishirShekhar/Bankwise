@@ -21,6 +21,28 @@ def test_chunking_and_ids_are_stable_and_bounded():
     assert normalize_url("HTTPS://Bank.Example/rates#section") == "https://bank.example/rates"
 
 
+def test_vertex_embedder_uses_stable_v1_api(monkeypatch):
+    from google import genai
+
+    captured = {}
+
+    def client_factory(**kwargs):
+        captured.update(kwargs)
+        return object()
+
+    monkeypatch.setattr("app.repositories.rag.BIGQUERY_PROJECT", "test-project")
+    monkeypatch.setattr("app.config.GOOGLE_CLOUD_LOCATION", "us-central1")
+    monkeypatch.setattr(genai, "Client", client_factory)
+
+    from app.repositories.rag import GeminiEmbedder
+
+    GeminiEmbedder()
+
+    assert captured["vertexai"] is True
+    assert captured["http_options"].api_version == "v1"
+    assert captured["http_options"].timeout == 15_000
+
+
 def test_bigquery_ingestion_uses_parameterized_idempotent_merges(monkeypatch):
     class Job:
         def result(self):
