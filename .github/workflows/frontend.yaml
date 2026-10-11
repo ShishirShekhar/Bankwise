@@ -2,6 +2,12 @@ name: Frontend CI
 
 on:
   workflow_call:
+    inputs:
+      skip_build:
+        description: Skip the separate frontend build during production deployment
+        required: false
+        type: boolean
+        default: false
   pull_request:
   push:
     branches:
@@ -51,7 +57,7 @@ jobs:
 
   frontend-build:
     name: frontend-build
-    if: github.event_name != 'workflow_call'
+    if: ${{ !inputs.skip_build }}
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
