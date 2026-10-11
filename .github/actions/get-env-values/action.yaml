@@ -95,6 +95,10 @@ outputs:
     description: Allowed browser origins
     value: ${{ steps.extract.outputs.cors_origins }}
 
+  cloud_run_url:
+    description: Cloud Run service URL for frontend API requests
+    value: ${{ steps.extract.outputs.cloud_run_url }}
+
 runs:
   using: composite
   steps:
@@ -154,7 +158,8 @@ runs:
           "auth_cookie_secure" =>
             runtime.fetch("auth_cookie_secure").to_s,
           "auth_cookie_samesite" => runtime.fetch("auth_cookie_samesite"),
-          "cors_origins" => runtime.fetch("cors_origins").join("\\,")
+          "cors_origins" => runtime.fetch("cors_origins").join("\\,"),
+          "cloud_run_url" => cloud_run.fetch("url")
         }
 
         values.each do |key, value|

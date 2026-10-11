@@ -9,6 +9,7 @@ gcp:
 
 cloud_run:
   service_name: bankwise-api
+  url: https://bankwise-api-2170676577.us-central1.run.app
   artifact_registry_repository: bankwise
   runtime:
     gemini_model: gemini-2.5-flash

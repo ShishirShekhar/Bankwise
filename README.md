@@ -88,6 +88,8 @@ ID is configured separately from the Google Cloud project ID. Configure
 web values available to the `production` environment. Non-sensitive backend
 runtime settings are in the `cloud_run.runtime` section of
 `.github/config/production.yaml`, including the allowed `cors_origins`, and are
-passed to Cloud Run by the config loader. `CSRF_SECRET` remains a Google Secret
-Manager secret; project IDs and Cloud Run region also come from
-`.github/config/production.yaml`.
+passed to Cloud Run by the config loader. The frontend build gets
+`NEXT_PUBLIC_BANKWISE_API_URL` from the backend's `cloud_run.url` setting in the
+same file.
+`CSRF_SECRET` remains a Google Secret Manager secret; project IDs and Cloud Run
+region also come from `.github/config/production.yaml`.
