@@ -117,15 +117,16 @@ The UI currently uses browser session storage for the result display. The backen
 
 The server assembles route modules in `backend/app/main.py`. It adds request IDs, safe error responses, request logging, CORS, and shared session authentication. `backend/app/api/assistant.py` handles `/api/ask` and calls `run_decision_workflow()`.
 
-The workflow in `backend/app/ai/decision_workflow.py` is named `ai`, but its current user-request path is deterministic and does not call Gemini or ADK:
+The request workflow coordinates deterministic specialists with BigQuery RAG, Vertex AI Search grounding, and an optional ADK explanation:
 
 1. `redact_sensitive_input()` removes identity and credential-like values.
 2. `extract_requirements_from_safe_query(..., use_gemini=False)` parses explicit money amounts and durations. It also recognizes simple liquidity phrases and unsupported categories. It does not infer missing numeric requirements.
-3. If amount or duration is missing, it saves the redacted requirements and missing-field list, returns a clarification result, and skips catalogue comparison.
-4. Otherwise, it selects active FD products through the environment's catalogue adapter.
-5. `compare_products()` tests each product's rate bands, asks the verified rate calculator for an outcome, and derives per-product trade-offs from calculated outcomes and verified withdrawal conditions.
-6. It saves the comparison in the session repository with the authenticated user ID. Raw query text is not part of the saved session.
-7. `to_ask_response()` in `backend/app/ai/ask_response.py` shapes this internal result into UI fields: options, skipped reasons, sources, messages, status, and a three-part deterministic explanation.
+3. If amount or duration is missing, it saves the redacted requirements and missing-field list, returns clarification, and skips RAG, Search, calculation, and explanation.
+4. Otherwise, it reads active catalogue products, retrieves current verified BigQuery RAG chunks, and invokes Vertex AI Search grounding only if matching internal evidence is insufficient.
+5. `sources.py` verifies canonical rate/source/conflict rules. `compare_products()` uses only eligible canonical rates and derives deterministic outcomes and trade-offs.
+6. The optional ADK explanation agent receives the verified comparison context; numeric/URL validation rejects unsupported output. The deterministic three-part explanation remains primary.
+7. It saves the comparison in the session repository with the authenticated user ID. Raw query text is not part of the saved session.
+8. `to_ask_response()` shapes the UI fields and includes evidence status and citations; the compare page labels research excerpts as not eligible for calculations.
 
 ## 6. Understand rate eligibility and calculation
 
@@ -160,7 +161,7 @@ The repositories adapt stored records to the shape consumed by domain functions.
 
 ## 8. What “AI” means in this repository
 
-The live query path reports that AI was not used. Optional Vertex AI requirement extraction is present in `backend/app/domain/input.py`; ADK agents and calculator/verifier tools are in `backend/app/ai/` and `backend/app/tools.py`; evaluation fixtures are in `backend/evals/`. These are not called by `/api/ask` today. Read [AI and agent architecture](ai-agent-architecture.md) before changing or enabling them.
+Requirement parsing, source verification, calculation, and the primary explanation are deterministic. In production, Google Search grounding and embeddings use Vertex AI when needed; the optional ADK explanation is controlled by `ENABLE_ADK_EXPLANATION`. Local and ordinary CI defaults keep these services disabled. Read [AI and agent architecture](ai-agent-architecture.md) for actual call ordering and failure behavior.
 
 ## 9. Where to make a change
 

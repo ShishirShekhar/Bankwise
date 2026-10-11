@@ -33,7 +33,7 @@ Inspect or preview local catalogue content in `backend/data/fd-products.json`. T
 python -m scripts.create_bigquery_dataset
 ```
 
-This applies the idempotent schema from `sql/bigquery_schema.sql`. Preview catalogue import with `ENVIRONMENT=local python -m scripts.import_fd_products`; apply with `ENVIRONMENT=local python -m scripts.import_fd_products --apply`. The importer upserts and does not delete. Review source conflicts and data before production use.
+This creates canonical `bankwise` and separate `bankwise_rag` datasets and applies the idempotent schema from `sql/bigquery_schema.sql`. Preview catalogue import with `ENVIRONMENT=local python -m scripts.import_fd_products`; apply with `ENVIRONMENT=local python -m scripts.import_fd_products --apply`. The importer upserts and does not delete. Review source conflicts and data before production use. See [AI and agent architecture](ai-agent-architecture.md) for corpus ingestion and promotion boundaries.
 
 ## Production platform
 
@@ -44,7 +44,7 @@ This applies the idempotent schema from `sql/bigquery_schema.sql`. Preview catal
 - Identity: Firebase Authentication; Firebase Hosting rewrites `/api/**` to the `bankwise-api` Cloud Run service.
 - Secrets: `CSRF_SECRET` is supplied through Google Secret Manager by the release workflow.
 
-`.github/config/production.yaml` contains non-secret project, region, service and runtime settings. The workflow also needs GitHub Actions variable `GCP_WORKLOAD_IDENTITY_PROVIDER`; Firebase web API key and app ID are configured as GitHub variables/environment values. Configure Firebase Email/Password and Google providers and authorized domains. Ensure Cloud Run runtime identity has BigQuery read/query and Firestore access; deployment identity can build/push and deploy.
+`.github/config/production.yaml` contains non-secret project, region, service and runtime settings. The workflow also needs GitHub Actions variable `GCP_WORKLOAD_IDENTITY_PROVIDER`; Firebase web API key and app ID are configured as GitHub variables/environment values. Configure Firebase Email/Password and Google providers and authorized domains. Enable BigQuery and Vertex AI APIs. Cloud Run runtime identity needs BigQuery Job User, BigQuery Data Viewer on `bankwise` and `bankwise_rag`, Vertex AI User for embeddings/Search grounding, and Firestore access. The explicit ingestion script additionally needs BigQuery Data Editor on `bankwise_rag`; grant that to a separate operator identity where possible. BigQuery query/storage and Vertex AI/Search grounding are billed services. No vector index is required at initial scale.
 
 ## Release deployment
 

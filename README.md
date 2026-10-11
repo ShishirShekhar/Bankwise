@@ -10,7 +10,7 @@ Bankwise is a fixed deposit (FD) comparison and decision-support application. It
 - [Architecture](docs/architecture.md): frontend, API, repositories, and request flow.
 - [Data model](docs/data-model.md): catalogue records and provenance relationships.
 - [API documentation](docs/api.md): routes, authentication, request and response behavior.
-- [AI and agent architecture](docs/ai-agent-architecture.md): live deterministic path and optional model tools.
+- [AI and agent architecture](docs/ai-agent-architecture.md): six-stage request workflow, RAG, Search grounding, and trust boundaries.
 - [Financial calculations](docs/financial-calculations.md): supported formula and limitations.
 - [Verification system](docs/verification-system.md): source status, conflicts, and usability rules.
 - [Deployment instructions](docs/deployment.md): local run and current release workflow.
@@ -64,7 +64,7 @@ npm run build
 
 ## Current scope and trust boundary
 
-Only fixed deposits are supported. The product catalogue is manually curated; no live bank-site crawler is enabled. `/api/ask` redacts sensitive input, deterministically extracts numeric requirements, filters verified products, calculates outcomes, and returns a deterministic explanation. Gemini/ADK integration code is optional and is not called by the live `/api/ask` workflow. Financial amounts and trade-off metrics come from backend code and are not model-generated.
+Only fixed deposits are supported. `/api/ask` redacts sensitive input, deterministically extracts numeric requirements, retrieves evidence from the separate BigQuery RAG corpus, and invokes Vertex AI Google Search grounding when that corpus has no current verified match. Catalogue verification, calculations, and trade-offs remain deterministic; search results and RAG excerpts never become calculation rates. The controlled source-ingestion command stores bounded excerpts and pending candidate facts in `bankwise_rag` for review. See [AI and agent architecture](docs/ai-agent-architecture.md) for execution order and limits.
 
 Only current, conflict-free `HIGH` rates can be used to calculate maturity. If no usable rate or its required compounding convention exists, the API withholds the amount and gives a reason. Generic compound interest can differ from a bank's exact day-count and rounding rules; results carry a warning.
 
