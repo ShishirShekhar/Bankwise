@@ -44,6 +44,8 @@ Decision sessions include their Firebase UID as `user_id`; `/api/sessions/{sessi
 
 Create the configured BigQuery dataset and its tables with `python -m scripts.create_bigquery_dataset` from `backend/`. The script reads project, dataset, and location from `.env`, then applies the idempotent DDL in `sql/bigquery_schema.sql`. It requires Google Cloud ADC credentials and permission to create datasets and tables.
 
+From `backend/`, preview the local FD catalogue with `ENVIRONMENT=local python -m scripts.import_fd_products`. It reports the number of rows per table and any conflict source references that cannot be mapped. Run `ENVIRONMENT=local python -m scripts.import_fd_products --apply` to idempotently upsert banks, products, sources, rates, conditions, verification records, and conflicts. The importer refuses to write if a conflict cannot be mapped to source rows. It does not delete existing BigQuery rows.
+
 ## Endpoints
 
 - `GET /api/health` (public liveness probe; does not verify dependencies)
