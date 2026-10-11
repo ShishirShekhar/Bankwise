@@ -15,15 +15,32 @@ if ENVIRONMENT == "development":
 if ENVIRONMENT not in {"local", "production"}:
     raise ValueError("ENVIRONMENT must be local or production")
 GEMINI_MODEL = setting("GEMINI_MODEL", "gemini-2.5-flash")
+ENABLE_ADK_EXPLANATION = setting("ENABLE_ADK_EXPLANATION", "false").lower() == "true"
 GOOGLE_CLOUD_PROJECT = setting("GOOGLE_CLOUD_PROJECT", "")
 GOOGLE_CLOUD_LOCATION = setting("GOOGLE_CLOUD_LOCATION", "us-central1")
+GOOGLE_SEARCH_LOCATION = setting("GOOGLE_SEARCH_LOCATION", "global")
 BIGQUERY_PROJECT = setting("BIGQUERY_PROJECT", "") or GOOGLE_CLOUD_PROJECT
 BIGQUERY_DATASET = setting("BIGQUERY_DATASET", "bankwise")
 BIGQUERY_LOCATION = setting("BIGQUERY_LOCATION", GOOGLE_CLOUD_LOCATION)
+RAG_DATASET = setting("RAG_DATASET", "bankwise_rag")
+EMBEDDING_MODEL = setting("EMBEDDING_MODEL", "gemini-embedding-001")
+RAG_TOP_K = int(setting("RAG_TOP_K", "6"))
+RAG_MAX_DISTANCE = float(setting("RAG_MAX_DISTANCE", "0.55"))
+RAG_CHUNK_SIZE = int(setting("RAG_CHUNK_SIZE", "1200"))
+RAG_CHUNK_OVERLAP = int(setting("RAG_CHUNK_OVERLAP", "150"))
+SEARCH_MAX_RESULTS = int(setting("SEARCH_MAX_RESULTS", "5"))
+INGEST_MAX_DOCUMENT_BYTES = int(setting("INGEST_MAX_DOCUMENT_BYTES", "2000000"))
 FIRESTORE_DATABASE = setting("FIRESTORE_DATABASE", "(default)")
 FIRESTORE_PROJECT = setting("FIRESTORE_PROJECT", "") or GOOGLE_CLOUD_PROJECT
 FIRESTORE_COLLECTION = setting("FIRESTORE_COLLECTION", "decision_sessions")
 SOURCE_MAX_AGE_DAYS = int(setting("SOURCE_MAX_AGE_DAYS", "90"))
+RAG_FRESHNESS_DAYS = int(setting("RAG_FRESHNESS_DAYS", str(SOURCE_MAX_AGE_DAYS)))
+if min(RAG_TOP_K, RAG_CHUNK_SIZE, SEARCH_MAX_RESULTS, INGEST_MAX_DOCUMENT_BYTES, RAG_FRESHNESS_DAYS) < 1:
+    raise ValueError("RAG, search, and ingestion limits must be positive")
+if RAG_CHUNK_OVERLAP < 0 or RAG_CHUNK_OVERLAP >= RAG_CHUNK_SIZE:
+    raise ValueError("RAG_CHUNK_OVERLAP must be non-negative and smaller than RAG_CHUNK_SIZE")
+if not 0 <= RAG_MAX_DISTANCE <= 2:
+    raise ValueError("RAG_MAX_DISTANCE must be between 0 and 2")
 ASK_RATE_LIMIT = int(setting("ASK_RATE_LIMIT", "10"))
 ASK_RATE_WINDOW_SECONDS = int(setting("ASK_RATE_WINDOW_SECONDS", "60"))
 if ASK_RATE_LIMIT < 1 or ASK_RATE_WINDOW_SECONDS < 1:

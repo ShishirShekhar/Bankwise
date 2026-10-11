@@ -1,20 +1,37 @@
-# AI and agent architecture
+# Research and decision workflow
 
-## What runs for users today
+## `/api/ask` execution order
 
-The current `/api/ask` path is deterministic. It calls `redact_sensitive_input()`, then invokes requirement parsing with `use_gemini=False`; amount and duration are extracted from the sanitized text using code. It reads the catalogue, verifies facts, calculates results, derives trade-offs, shapes a structured explanation and persists sanitized state. The response reports `ai.provider = "deterministic API"` and `status = "not_used"`.
+1. The authenticated, CSRF-protected, rate-limited API receives the request. `redact_sensitive_input()` runs before requirement parsing, RAG, or Google Search.
+2. The Requirement specialist extracts explicitly stated amount, duration, category, and liquidity preference with deterministic parsing. Missing amount or duration returns a clarification before retrieval.
+3. The Research specialist reads active fixed-deposit products from the configured catalogue, then embeds a request-scoped retrieval query and calls BigQuery `VECTOR_SEARCH` over `bankwise_rag.source_chunks`. Retrieval filters to active, `HIGH` verified, fresh chunks. If there are no eligible chunks, it invokes Vertex AI Google Search grounding through `google-genai` and preserves grounding source URLs and retrieval time.
+4. The Verification specialist runs the existing `sources.py` checks and conflict rules against canonical catalogue facts. RAG and Search evidence remain evidence only.
+5. The Calculation specialist delegates to `compare_products`, rate selection, and the deterministic FD calculator. Only catalogue rates that pass verification can reach these functions.
+6. The deterministic Explanation specialist shapes Bankwise's primary three-part response. When Vertex AI is configured, a request-scoped Google ADK explanation agent also receives the verified decision context; its output is accepted only when all three sections are present, every numeric value occurs in the supplied context, and every URL is a verified source URL. The API keeps the deterministic explanation as the primary result and exposes accepted model prose separately under `ai.explanation`.
+7. Redacted session data is persisted using the configured session repository and the compatible response is returned with research invocation status and citations.
 
-There is no live agent selecting tools or generating decision prose in this path. This is a deliberate trust boundary: the data and financial outcomes are controlled by application code.
+The six cooperating specialists are the request-scoped Orchestrator, Requirement, Research, Verification, Calculation, and Explanation stages. Critical stage decisions use executable Python contracts so model failure cannot skip source checks or calculations. ADK explanation is optional when a Cloud project is configured; the deterministic primary explanation remains authoritative. Google Search grounding uses the Vertex AI Gen AI SDK. The supported API shapes were checked against the project's dependency range and the local `google-adk 1.35.2` / `google-genai 1.75.0` installation. Google Search citations are copied from response grounding metadata; absence of grounding metadata is reported as no grounded sources. The `research.search_text` summary and its citations are explicitly pending evidence and never become explanation facts or calculation inputs. Grounding suggestions are retained in `research.search_suggestions`; clients displaying grounded model text must also display the associated Google Search suggestions as required by the Search grounding terms.
 
-## Optional model and ADK code
+## Corpus and ingestion
 
-- `app/domain/input.py` has an optional Vertex AI Gemini requirement-extraction branch. Numeric values are still overwritten by deterministic parsing, and the live workflow disables this branch.
-- `app/ai/orchestrator.py` defines a root explanation agent over a completed decision context and a calculation agent restricted to `calculate_fd_tool`.
-- `app/tools.py` exposes deterministic source verification and calculation functions for agent/evaluation integrations.
-- `backend/evals/fd_calculation/` contains optional Gemini evaluation cases; CI validates fixtures against deterministic tools without requiring Gemini.
+`bankwise` remains the canonical source of bank, product, rate, condition, source, and conflict records. `bankwise_rag` contains:
 
-These modules are not equivalent to an enabled production agent. `/api/agent/health` only reports configuration and installed packages; it does not mean user requests are being sent to a model.
+- `source_documents`: canonical URL, title/publisher/domain, document type, dates, retrieval time, content hash and lifecycle statuses.
+- `source_chunks`: bounded excerpt, stable document/chunk IDs, product metadata, status/freshness, embedding vector, model ID and dimensions.
+- `research_candidates`: extracted rate-like text with excerpt references, source URL, content hash, and pending verification/promotion states.
 
-## If model generation is enabled later
+Embeddings use the configurable Google Gen AI `EMBEDDING_MODEL` consistently for `RETRIEVAL_DOCUMENT` and `RETRIEVAL_QUERY`; retrieval filters to the same model and vector dimension. BigQuery performs exact `VECTOR_SEARCH` without requiring a vector index at initial corpus sizes. A configurable maximum cosine distance rejects semantically weak hits and triggers live Search instead. Re-ingestion uses content-derived IDs and `MERGE`; changed document revisions stale prior chunks. Search discoveries are not automatically fetched in the user request. The explicit CLI fetches only allow-listed HTTP(S) domains, checks DNS addresses and redirects, checks robots rules, caps bytes and time, accepts HTML/plain text, redacts sensitive content and extracts bounded excerpts. It does not execute page content. An operator-reviewed `--trusted-official-domain` may mark source provenance HIGH for RAG; extracted rate-like strings still become pending candidates and are never calculable. No promotion path is exposed online.
 
-Keep parsing constrained to explicit user statements. Redact sensitive content before any provider call. Supply only verified decision context to an explanation model. Require the three sections: (1) Executive Decision Summary, (2) The Key Trade-off (“What Am I Giving Up?”), and (3) Conditions & Transparency. Preserve API-generated gains/give-ups and amounts unchanged. A model may explain these values, but cannot supply financial facts, hide conflicts, or perform arithmetic. Add evaluation cases for missing, stale and conflicting data before rollout.
+Only current, source-linked, conflict-free `HIGH` canonical catalogue rates are eligible for calculation. The current ingestion command intentionally leaves all facts pending. Admin verification and canonical promotion remain a manual data-governance step; there is no automated candidate approval endpoint.
+
+## Configuration and cloud setup
+
+Set `RAG_DATASET` (default `bankwise_rag`), `EMBEDDING_MODEL` (default `gemini-embedding-001`), `RAG_TOP_K`, `RAG_MAX_DISTANCE`, `RAG_CHUNK_SIZE`, `RAG_CHUNK_OVERLAP`, `RAG_FRESHNESS_DAYS`, `SEARCH_MAX_RESULTS`, and `INGEST_MAX_DOCUMENT_BYTES` as needed. `ENABLE_ADK_EXPLANATION` defaults to false for offline development and CI; production config enables it. Production values live in `.github/config/production.yaml`; no credentials belong there.
+
+Enable BigQuery (`bigquery.googleapis.com`) and Vertex AI (`aiplatform.googleapis.com`) in the Google Cloud project, configure Google Search grounding and its Search suggestions in Vertex AI, and use the global location for Search (`GOOGLE_SEARCH_LOCATION=global`). The Cloud Run runtime service account needs BigQuery Job User (`roles/bigquery.jobUser`) on the project, BigQuery Data Viewer (`roles/bigquery.dataViewer`) on `bankwise` and `bankwise_rag`, Vertex AI User (`roles/aiplatform.user`) for embeddings and Search grounding, and the existing Firestore access role. The explicit ingestion script needs BigQuery Data Editor (`roles/bigquery.dataEditor`) on `bankwise_rag`; a separately operated ingestion identity can hold that grant while the serving identity remains read-only. No vector index is required. BigQuery on-demand query and storage, Vertex AI embedding/generation, and Google Search grounding can incur costs.
+
+Run `python -m scripts.create_bigquery_dataset` from `backend/` with ADC to create both datasets/tables. Run `python -m scripts.ingest_public_source URL --allowed-domain bank.example --trusted-official-domain bank.example` for a reviewed official source; omit the trusted flag for staging-only evidence. Ordinary CI needs no cloud credentials; tests use fakes. Live search, embeddings, BigQuery, and source fetching require opt-in integration tests and configured cloud access.
+
+## Limitations
+
+PDF extraction, bulk ingestion scheduling, automated candidate fact applicability/effective-date verification, conflict resolution, and canonical promotion are not implemented. Search grounding discovers sources but does not populate rates or claim that a rate is verified. The ingestion allow-list and candidate review are operator-managed. Search may be unavailable by project/model/location configuration; the workflow records that failure and continues only with independently verified canonical data.

@@ -8,6 +8,7 @@ import { ComparisonWarnings } from "@/components/compare/ComparisonWarnings";
 import { DecisionAnswer } from "@/components/compare/DecisionAnswer";
 import { NoComparison } from "@/components/compare/NoComparison";
 import { ProductResults } from "@/components/compare/ProductResults";
+import { ResearchEvidence } from "@/components/compare/ResearchEvidence";
 import { SkippedProducts } from "@/components/compare/SkippedProducts";
 import { StructuredExplanation } from "@/components/compare/StructuredExplanation";
 import { TradeoffBanner } from "@/components/compare/TradeoffBanner";
@@ -62,6 +63,7 @@ export function ComparisonPage() {
             ) : null}
             <SkippedProducts products={result.skipped} />
             <StructuredExplanation explanation={result.explanation} />
+            <ResearchEvidence research={result.research} />
             <ComparisonWarnings warnings={result.warnings} />
             <p className="mt-7 text-center text-xs leading-5 text-gray-500">
               Financial rates and conditions are shown with their source where available. Maturity

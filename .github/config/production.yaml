@@ -13,10 +13,14 @@ cloud_run:
   artifact_registry_repository: bankwise
   runtime:
     gemini_model: gemini-2.5-flash
+    enable_adk_explanation: "true"
     google_genai_use_vertexai: "TRUE"
     google_cloud_location: us-central1
+    google_search_location: global
     bigquery_dataset: bankwise
     bigquery_location: US
+    rag_dataset: bankwise_rag
+    embedding_model: gemini-embedding-001
     firestore_database: bankwise
     firestore_collection: decision_sessions
     source_max_age_days: "90"

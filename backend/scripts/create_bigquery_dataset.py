@@ -7,28 +7,42 @@ After ensuring the dataset exists, this also applies the idempotent table DDL
 from ``sql/bigquery_schema.sql``.
 """
 
+import re
 from pathlib import Path
 
 from google.cloud import bigquery
 
-from app.config import BIGQUERY_DATASET, BIGQUERY_LOCATION, BIGQUERY_PROJECT
+from app.config import (
+    BIGQUERY_DATASET,
+    BIGQUERY_LOCATION,
+    BIGQUERY_PROJECT,
+    RAG_DATASET,
+)
 
 
 def main() -> None:
     if not BIGQUERY_PROJECT:
         raise SystemExit("Set BIGQUERY_PROJECT or GOOGLE_CLOUD_PROJECT in backend/.env")
+    if not re.fullmatch(r"[A-Za-z0-9_-]+", BIGQUERY_PROJECT) or not re.fullmatch(
+        r"[A-Za-z0-9_]+", BIGQUERY_DATASET
+    ) or not re.fullmatch(r"[A-Za-z0-9_]+", RAG_DATASET):
+        raise SystemExit("Invalid BigQuery project or dataset identifier")
 
     client = bigquery.Client(project=BIGQUERY_PROJECT, location=BIGQUERY_LOCATION)
     dataset_id = f"{BIGQUERY_PROJECT}.{BIGQUERY_DATASET}"
     dataset = bigquery.Dataset(dataset_id)
     dataset.location = BIGQUERY_LOCATION
     client.create_dataset(dataset, exists_ok=True)
+    rag_dataset = bigquery.Dataset(f"{BIGQUERY_PROJECT}.{RAG_DATASET}")
+    rag_dataset.location = BIGQUERY_LOCATION
+    client.create_dataset(rag_dataset, exists_ok=True)
     print(f"BigQuery dataset ready: {dataset_id} ({BIGQUERY_LOCATION})")
 
     schema_path = Path(__file__).resolve().parents[1] / "sql" / "bigquery_schema.sql"
     schema = schema_path.read_text(encoding="utf-8")
     schema = schema.replace("{{BIGQUERY_PROJECT}}", BIGQUERY_PROJECT)
     schema = schema.replace("{{BIGQUERY_DATASET}}", BIGQUERY_DATASET)
+    schema = schema.replace("{{RAG_DATASET}}", RAG_DATASET)
     schema = schema.replace("{{BIGQUERY_LOCATION}}", BIGQUERY_LOCATION)
     statements = [statement.strip() for statement in schema.split(";")]
     statements = [statement for statement in statements if statement]
@@ -36,7 +50,7 @@ def main() -> None:
     for statement in statements:
         client.query(statement, location=BIGQUERY_LOCATION).result()
 
-    print(f"BigQuery tables are ready in {dataset_id}")
+    print(f"BigQuery tables are ready in {dataset_id} and {BIGQUERY_PROJECT}.{RAG_DATASET}")
 
 
 if __name__ == "__main__":

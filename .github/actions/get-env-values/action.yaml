@@ -42,6 +42,9 @@ outputs:
   gemini_model:
     description: Gemini model
     value: ${{ steps.extract.outputs.gemini_model }}
+  enable_adk_explanation:
+    description: Enable request-scoped ADK explanation generation
+    value: ${{ steps.extract.outputs.enable_adk_explanation }}
 
   google_genai_use_vertexai:
     description: Use Vertex AI with the Google GenAI SDK
@@ -50,6 +53,17 @@ outputs:
   google_cloud_location:
     description: Google Cloud location for Vertex AI
     value: ${{ steps.extract.outputs.google_cloud_location }}
+  google_search_location:
+    description: Location for Vertex AI Google Search grounding
+    value: ${{ steps.extract.outputs.google_search_location }}
+
+  rag_dataset:
+    description: BigQuery dataset for evidence chunks and candidates
+    value: ${{ steps.extract.outputs.rag_dataset }}
+
+  embedding_model:
+    description: Vertex AI text embedding model
+    value: ${{ steps.extract.outputs.embedding_model }}
 
   bigquery_dataset:
     description: BigQuery dataset
@@ -143,11 +157,15 @@ runs:
           "artifact_registry_repository" =>
             cloud_run.fetch("artifact_registry_repository"),
           "gemini_model" => runtime.fetch("gemini_model"),
+          "enable_adk_explanation" => runtime.fetch("enable_adk_explanation").to_s,
           "google_genai_use_vertexai" =>
             runtime.fetch("google_genai_use_vertexai").to_s,
           "google_cloud_location" => runtime.fetch("google_cloud_location"),
+          "google_search_location" => runtime.fetch("google_search_location"),
           "bigquery_dataset" => runtime.fetch("bigquery_dataset"),
           "bigquery_location" => runtime.fetch("bigquery_location"),
+          "rag_dataset" => runtime.fetch("rag_dataset"),
+          "embedding_model" => runtime.fetch("embedding_model"),
           "firestore_database" => runtime.fetch("firestore_database"),
           "firestore_collection" => runtime.fetch("firestore_collection"),
           "source_max_age_days" => runtime.fetch("source_max_age_days").to_s,

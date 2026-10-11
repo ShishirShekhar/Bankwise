@@ -87,3 +87,54 @@ CREATE TABLE IF NOT EXISTS `{{BIGQUERY_PROJECT}}.{{BIGQUERY_DATASET}}.source_con
   resolved_at TIMESTAMP,
   resolution_notes STRING
 );
+
+-- Research evidence is deliberately isolated from the canonical catalogue.
+CREATE SCHEMA IF NOT EXISTS `{{BIGQUERY_PROJECT}}.{{RAG_DATASET}}` OPTIONS(location="{{BIGQUERY_LOCATION}}");
+
+CREATE TABLE IF NOT EXISTS `{{BIGQUERY_PROJECT}}.{{RAG_DATASET}}.source_documents` (
+  document_id STRING NOT NULL,
+  canonical_url STRING NOT NULL,
+  title STRING NOT NULL,
+  publisher STRING,
+  domain STRING NOT NULL,
+  document_type STRING NOT NULL,
+  published_at TIMESTAMP,
+  effective_from DATE,
+  effective_to DATE,
+  retrieved_at TIMESTAMP NOT NULL,
+  content_hash STRING NOT NULL,
+  source_status STRING NOT NULL,
+  verification_status STRING NOT NULL,
+  ingestion_status STRING NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS `{{BIGQUERY_PROJECT}}.{{RAG_DATASET}}.source_chunks` (
+  chunk_id STRING NOT NULL,
+  document_id STRING NOT NULL,
+  chunk_index INT64 NOT NULL,
+  excerpt STRING NOT NULL,
+  product_category STRING,
+  product_id STRING,
+  source_status STRING NOT NULL,
+  verification_status STRING NOT NULL,
+  retrieved_at TIMESTAMP NOT NULL,
+  content_hash STRING NOT NULL,
+  embedding ARRAY<FLOAT64>,
+  embedding_model STRING NOT NULL,
+  embedding_dimensions INT64 NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS `{{BIGQUERY_PROJECT}}.{{RAG_DATASET}}.research_candidates` (
+  candidate_id STRING NOT NULL,
+  fact_type STRING NOT NULL,
+  product_id STRING,
+  candidate_value JSON NOT NULL,
+  evidence_chunk_ids ARRAY<STRING>,
+  source_url STRING NOT NULL,
+  retrieved_at TIMESTAMP NOT NULL,
+  verification_status STRING NOT NULL,
+  validation_status STRING NOT NULL,
+  conflict_ids ARRAY<STRING>,
+  promotion_status STRING NOT NULL,
+  content_hash STRING NOT NULL
+);

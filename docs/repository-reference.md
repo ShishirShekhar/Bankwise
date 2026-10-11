@@ -118,6 +118,7 @@ This is the directory-by-directory lookup guide to the tracked project. “Sourc
 | `__init__.py` | Marks repository adapters as a package. |
 | `local_json.py` | Reads and normalizes the local JSON catalogue. |
 | `bigquery.py` | Reads production catalogue and verification records from BigQuery. |
+| `rag.py` | Stores bounded source excerpts, embeddings, candidate facts, and performs BigQuery vector retrieval. |
 | `memory_sessions.py` | Stores temporary local decision sessions in process memory. |
 | `firestore.py` | Persists decision sessions to Firestore in production. |
 
@@ -126,8 +127,11 @@ This is the directory-by-directory lookup guide to the tracked project. “Sourc
 | File | Purpose |
 |---|---|
 | `ai/ask_response.py` | Converts internal deterministic decision data into the frontend response format. Despite the directory name, this response shaping is ordinary Python, not model generation. |
-| `ai/decision_workflow.py` | Redacts/parses a query, compares, persists, and builds the live decision context; currently does not invoke Gemini. |
-| `ai/orchestrator.py` | Defines optional ADK agents for grounded explanation/calculation integrations. |
+| `ai/decision_workflow.py` | Redacts/parses, coordinates specialist stages, verifies/calculates, persists, and optionally invokes ADK explanation. |
+| `ai/specialists.py` | Typed requirement, research, verification, calculation, and explanation contracts coordinated per request. |
+| `ai/research.py` | Calls Vertex AI Google Search grounding and preserves citation metadata. |
+| `ai/ingestion.py` | Fetches allow-listed public sources safely and stages excerpts/candidate facts. |
+| `ai/orchestrator.py` | Builds the deterministic-tool ADK calculation agent and validated explanation agent. |
 | `evals/__init__.py` | Evaluation package marker. |
 | `evals/fd_calculation/__init__.py` | FD calculation evaluation package marker. |
 | `evals/fd_calculation/agent.py` | Optional ADK evaluation agent definition. |
