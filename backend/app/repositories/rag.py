@@ -24,10 +24,24 @@ def normalize_url(url: str) -> str:
     if parsed.scheme not in {"http", "https"} or not parsed.hostname or parsed.username:
         raise ValueError("Only public HTTP(S) source URLs are accepted")
     query_pairs = parse_qsl(parsed.query, keep_blank_values=True)
-    if any(re.search(r"(?:api_?key|token|auth|session|password|secret|credential)", key, re.IGNORECASE)
-           for key, _value in query_pairs):
+    if any(
+        re.search(
+            r"(?:api_?key|token|auth|session|password|secret|credential)",
+            key,
+            re.IGNORECASE,
+        )
+        for key, _value in query_pairs
+    ):
         raise ValueError("Credential-like URL parameters are not accepted")
-    return urlunsplit((parsed.scheme.lower(), parsed.netloc.lower(), parsed.path or "/", urlencode(query_pairs), ""))
+    return urlunsplit(
+        (
+            parsed.scheme.lower(),
+            parsed.netloc.lower(),
+            parsed.path or "/",
+            urlencode(query_pairs),
+            "",
+        )
+    )
 
 
 def split_chunks(text: str, size: int, overlap: int) -> list[str]:
@@ -71,7 +85,7 @@ class GeminiEmbedder:
                 vertexai=True,
                 project=BIGQUERY_PROJECT,
                 location=GOOGLE_CLOUD_LOCATION,
-                http_options=types.HttpOptions(timeout=15_000),
+                http_options=types.HttpOptions(api_version="v1", timeout=15_000),
             )
         self.client = client
 
@@ -93,7 +107,9 @@ class BigQueryRagRepository:
         if client is None:
             from google.cloud import bigquery
 
-            client = bigquery.Client(project=BIGQUERY_PROJECT, location=BIGQUERY_LOCATION)
+            client = bigquery.Client(
+                project=BIGQUERY_PROJECT, location=BIGQUERY_LOCATION
+            )
         self.client = client
         self.dataset = dataset
         self.prefix = f"`{BIGQUERY_PROJECT}.{dataset}"
@@ -103,9 +119,13 @@ class BigQueryRagRepository:
         from google.cloud import bigquery
 
         config = bigquery.QueryJobConfig(query_parameters=parameters)
-        return self.client.query(sql, job_config=config, location=BIGQUERY_LOCATION).result()
+        return self.client.query(
+            sql, job_config=config, location=BIGQUERY_LOCATION
+        ).result()
 
-    def upsert_document(self, document: dict[str, Any], chunks: list[dict[str, Any]]) -> None:
+    def upsert_document(
+        self, document: dict[str, Any], chunks: list[dict[str, Any]]
+    ) -> None:
         """MERGE stable document/chunk identifiers; repeat ingestion replaces rows."""
         from google.cloud import bigquery
 
@@ -113,25 +133,59 @@ class BigQueryRagRepository:
         self._query(
             f"UPDATE {self.prefix}.source_chunks` SET source_status='STALE' "
             "WHERE document_id=@document_id AND content_hash!=@content_hash",
-            [bigquery.ScalarQueryParameter("document_id", "STRING", document["document_id"]),
-             bigquery.ScalarQueryParameter("content_hash", "STRING", document["content_hash"])],
+            [
+                bigquery.ScalarQueryParameter(
+                    "document_id", "STRING", document["document_id"]
+                ),
+                bigquery.ScalarQueryParameter(
+                    "content_hash", "STRING", document["content_hash"]
+                ),
+            ],
         )
 
         doc_params = [
-            bigquery.ScalarQueryParameter("document_id", "STRING", document["document_id"]),
-            bigquery.ScalarQueryParameter("canonical_url", "STRING", document["canonical_url"]),
+            bigquery.ScalarQueryParameter(
+                "document_id", "STRING", document["document_id"]
+            ),
+            bigquery.ScalarQueryParameter(
+                "canonical_url", "STRING", document["canonical_url"]
+            ),
             bigquery.ScalarQueryParameter("title", "STRING", document["title"]),
-            bigquery.ScalarQueryParameter("publisher", "STRING", document.get("publisher")),
+            bigquery.ScalarQueryParameter(
+                "publisher", "STRING", document.get("publisher")
+            ),
             bigquery.ScalarQueryParameter("domain", "STRING", document["domain"]),
-            bigquery.ScalarQueryParameter("document_type", "STRING", document["document_type"]),
-            bigquery.ScalarQueryParameter("published_at", "TIMESTAMP", document.get("published_at")),
-            bigquery.ScalarQueryParameter("effective_from", "DATE", document.get("effective_from")),
-            bigquery.ScalarQueryParameter("effective_to", "DATE", document.get("effective_to")),
-            bigquery.ScalarQueryParameter("retrieved_at", "TIMESTAMP", document["retrieved_at"]),
-            bigquery.ScalarQueryParameter("content_hash", "STRING", document["content_hash"]),
-            bigquery.ScalarQueryParameter("source_status", "STRING", document.get("source_status", "ACTIVE")),
-            bigquery.ScalarQueryParameter("verification_status", "STRING", document.get("verification_status", "PENDING")),
-            bigquery.ScalarQueryParameter("ingestion_status", "STRING", document.get("ingestion_status", "INDEXED")),
+            bigquery.ScalarQueryParameter(
+                "document_type", "STRING", document["document_type"]
+            ),
+            bigquery.ScalarQueryParameter(
+                "published_at", "TIMESTAMP", document.get("published_at")
+            ),
+            bigquery.ScalarQueryParameter(
+                "effective_from", "DATE", document.get("effective_from")
+            ),
+            bigquery.ScalarQueryParameter(
+                "effective_to", "DATE", document.get("effective_to")
+            ),
+            bigquery.ScalarQueryParameter(
+                "retrieved_at", "TIMESTAMP", document["retrieved_at"]
+            ),
+            bigquery.ScalarQueryParameter(
+                "content_hash", "STRING", document["content_hash"]
+            ),
+            bigquery.ScalarQueryParameter(
+                "source_status", "STRING", document.get("source_status", "ACTIVE")
+            ),
+            bigquery.ScalarQueryParameter(
+                "verification_status",
+                "STRING",
+                document.get("verification_status", "PENDING"),
+            ),
+            bigquery.ScalarQueryParameter(
+                "ingestion_status",
+                "STRING",
+                document.get("ingestion_status", "INDEXED"),
+            ),
         ]
         self._query(
             f"""MERGE {self.prefix}.source_documents` T USING (
@@ -146,22 +200,48 @@ class BigQueryRagRepository:
               published_at=S.published_at, effective_from=S.effective_from, effective_to=S.effective_to,
               retrieved_at=S.retrieved_at, content_hash=S.content_hash, source_status=S.source_status,
               verification_status=S.verification_status, ingestion_status=S.ingestion_status
-            WHEN NOT MATCHED THEN INSERT ROW""", doc_params)
+            WHEN NOT MATCHED THEN INSERT ROW""",
+            doc_params,
+        )
         for chunk in chunks:
             params = [
                 bigquery.ScalarQueryParameter("chunk_id", "STRING", chunk["chunk_id"]),
-                bigquery.ScalarQueryParameter("document_id", "STRING", document["document_id"]),
-                bigquery.ScalarQueryParameter("chunk_index", "INT64", chunk["chunk_index"]),
+                bigquery.ScalarQueryParameter(
+                    "document_id", "STRING", document["document_id"]
+                ),
+                bigquery.ScalarQueryParameter(
+                    "chunk_index", "INT64", chunk["chunk_index"]
+                ),
                 bigquery.ScalarQueryParameter("excerpt", "STRING", chunk["excerpt"]),
-                bigquery.ScalarQueryParameter("product_category", "STRING", chunk.get("product_category")),
-                bigquery.ScalarQueryParameter("product_id", "STRING", chunk.get("product_id")),
-                bigquery.ScalarQueryParameter("source_status", "STRING", document.get("source_status", "ACTIVE")),
-                bigquery.ScalarQueryParameter("verification_status", "STRING", document.get("verification_status", "PENDING")),
-                bigquery.ScalarQueryParameter("retrieved_at", "TIMESTAMP", document["retrieved_at"]),
-                bigquery.ScalarQueryParameter("content_hash", "STRING", document["content_hash"]),
-                bigquery.ArrayQueryParameter("embedding", "FLOAT64", chunk["embedding"]),
-                bigquery.ScalarQueryParameter("embedding_model", "STRING", self.embedder.model),
-                bigquery.ScalarQueryParameter("embedding_dimensions", "INT64", len(chunk["embedding"])),
+                bigquery.ScalarQueryParameter(
+                    "product_category", "STRING", chunk.get("product_category")
+                ),
+                bigquery.ScalarQueryParameter(
+                    "product_id", "STRING", chunk.get("product_id")
+                ),
+                bigquery.ScalarQueryParameter(
+                    "source_status", "STRING", document.get("source_status", "ACTIVE")
+                ),
+                bigquery.ScalarQueryParameter(
+                    "verification_status",
+                    "STRING",
+                    document.get("verification_status", "PENDING"),
+                ),
+                bigquery.ScalarQueryParameter(
+                    "retrieved_at", "TIMESTAMP", document["retrieved_at"]
+                ),
+                bigquery.ScalarQueryParameter(
+                    "content_hash", "STRING", document["content_hash"]
+                ),
+                bigquery.ArrayQueryParameter(
+                    "embedding", "FLOAT64", chunk["embedding"]
+                ),
+                bigquery.ScalarQueryParameter(
+                    "embedding_model", "STRING", self.embedder.model
+                ),
+                bigquery.ScalarQueryParameter(
+                    "embedding_dimensions", "INT64", len(chunk["embedding"])
+                ),
             ]
             self._query(
                 f"""MERGE {self.prefix}.source_chunks` T USING (
@@ -175,20 +255,37 @@ class BigQueryRagRepository:
                   embedding_model=S.embedding_model, embedding_dimensions=S.embedding_dimensions,
                   content_hash=S.content_hash, retrieved_at=S.retrieved_at,
                   verification_status=S.verification_status, source_status=S.source_status
-                WHEN NOT MATCHED THEN INSERT ROW""", params)
+                WHEN NOT MATCHED THEN INSERT ROW""",
+                params,
+            )
 
     def upsert_candidates(self, candidates: list[dict[str, Any]]) -> None:
         """Store extracted facts for review without touching canonical records."""
         from google.cloud import bigquery
+
         for candidate in candidates:
             params = [
-                bigquery.ScalarQueryParameter("candidate_id", "STRING", candidate["candidate_id"]),
-                bigquery.ScalarQueryParameter("fact_type", "STRING", candidate["fact_type"]),
-                bigquery.ScalarQueryParameter("candidate_value", "STRING", candidate["candidate_value"]),
-                bigquery.ArrayQueryParameter("evidence_chunk_ids", "STRING", candidate["evidence_chunk_ids"]),
-                bigquery.ScalarQueryParameter("source_url", "STRING", candidate["source_url"]),
-                bigquery.ScalarQueryParameter("retrieved_at", "TIMESTAMP", candidate["retrieved_at"]),
-                bigquery.ScalarQueryParameter("content_hash", "STRING", candidate["content_hash"]),
+                bigquery.ScalarQueryParameter(
+                    "candidate_id", "STRING", candidate["candidate_id"]
+                ),
+                bigquery.ScalarQueryParameter(
+                    "fact_type", "STRING", candidate["fact_type"]
+                ),
+                bigquery.ScalarQueryParameter(
+                    "candidate_value", "STRING", candidate["candidate_value"]
+                ),
+                bigquery.ArrayQueryParameter(
+                    "evidence_chunk_ids", "STRING", candidate["evidence_chunk_ids"]
+                ),
+                bigquery.ScalarQueryParameter(
+                    "source_url", "STRING", candidate["source_url"]
+                ),
+                bigquery.ScalarQueryParameter(
+                    "retrieved_at", "TIMESTAMP", candidate["retrieved_at"]
+                ),
+                bigquery.ScalarQueryParameter(
+                    "content_hash", "STRING", candidate["content_hash"]
+                ),
             ]
             self._query(
                 f"""MERGE {self.prefix}.research_candidates` T USING (
@@ -205,9 +302,13 @@ class BigQueryRagRepository:
                   validation_status, promotion_status, content_hash)
                 VALUES (S.candidate_id, S.fact_type, S.candidate_value,
                   S.evidence_chunk_ids, S.source_url, S.retrieved_at, 'PENDING',
-                  'PENDING', 'NOT_PROMOTED', S.content_hash)""", params)
+                  'PENDING', 'NOT_PROMOTED', S.content_hash)""",
+                params,
+            )
 
-    def retrieve(self, query: str, top_k: int = RAG_TOP_K, category: str = "FD") -> list[dict[str, Any]]:
+    def retrieve(
+        self, query: str, top_k: int = RAG_TOP_K, category: str = "FD"
+    ) -> list[dict[str, Any]]:
         from google.cloud import bigquery
 
         vector = self.embedder.embed(query, "RETRIEVAL_QUERY")
@@ -231,15 +332,26 @@ class BigQueryRagRepository:
             bigquery.ScalarQueryParameter("category", "STRING", category),
             bigquery.ScalarQueryParameter("freshness", "INT64", RAG_FRESHNESS_DAYS),
             bigquery.ArrayQueryParameter("query_embedding", "FLOAT64", vector),
-            bigquery.ScalarQueryParameter("embedding_model", "STRING", self.embedder.model),
+            bigquery.ScalarQueryParameter(
+                "embedding_model", "STRING", self.embedder.model
+            ),
             bigquery.ScalarQueryParameter("embedding_dimensions", "INT64", len(vector)),
             bigquery.ScalarQueryParameter("top_k", "INT64", min(max(top_k, 1), 20)),
         ]
         rows = [dict(row.items()) for row in self._query(sql, params)]
-        return [row for row in rows if float(row.get("distance", 2)) <= RAG_MAX_DISTANCE]
+        return [
+            row for row in rows if float(row.get("distance", 2)) <= RAG_MAX_DISTANCE
+        ]
 
 
-def make_document(url: str, title: str, text: str, publisher: str | None, document_type: str, retrieved_at: datetime | None = None) -> tuple[dict[str, Any], list[str]]:
+def make_document(
+    url: str,
+    title: str,
+    text: str,
+    publisher: str | None,
+    document_type: str,
+    retrieved_at: datetime | None = None,
+) -> tuple[dict[str, Any], list[str]]:
     """Create source metadata plus stable excerpt identifiers from extracted text."""
     normalized_url = normalize_url(url)
     content_hash = hashlib.sha256(text.encode("utf-8")).hexdigest()
@@ -249,9 +361,16 @@ def make_document(url: str, title: str, text: str, publisher: str | None, docume
 
     excerpts = split_chunks(text, RAG_CHUNK_SIZE, RAG_CHUNK_OVERLAP)
     document = {
-        "document_id": document_id, "canonical_url": normalized_url, "title": title[:500],
-        "publisher": publisher, "domain": urlsplit(normalized_url).hostname or "",
-        "document_type": document_type, "retrieved_at": timestamp, "content_hash": content_hash,
-        "source_status": "ACTIVE", "verification_status": "PENDING", "ingestion_status": "INDEXED",
+        "document_id": document_id,
+        "canonical_url": normalized_url,
+        "title": title[:500],
+        "publisher": publisher,
+        "domain": urlsplit(normalized_url).hostname or "",
+        "document_type": document_type,
+        "retrieved_at": timestamp,
+        "content_hash": content_hash,
+        "source_status": "ACTIVE",
+        "verification_status": "PENDING",
+        "ingestion_status": "INDEXED",
     }
     return document, excerpts
