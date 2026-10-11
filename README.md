@@ -1,95 +1,93 @@
 # Bankwise
 
-> Source-grounded financial-product comparison and decision support.
+Bankwise is a fixed deposit (FD) comparison and decision-support application. It parses a user's stated amount and duration, uses only eligible source-verified catalogue data, calculates maturity deterministically, and explains gains and give-ups between available products.
 
-## Problem
+## Start here
 
-Finding financial-product information is easy.
+- [Codebase walkthrough](docs/codebase-walkthrough.md): local setup explained and end-to-end request flow.
+- [Repository reference](docs/repository-reference.md): map of every tracked source, test, script, and configuration file.
+- [Product specification](docs/product-specification.md): user problem, scope, and product behavior.
+- [Architecture](docs/architecture.md): frontend, API, repositories, and request flow.
+- [Data model](docs/data-model.md): catalogue records and provenance relationships.
+- [API documentation](docs/api.md): routes, authentication, request and response behavior.
+- [AI and agent architecture](docs/ai-agent-architecture.md): live deterministic path and optional model tools.
+- [Financial calculations](docs/financial-calculations.md): supported formula and limitations.
+- [Verification system](docs/verification-system.md): source status, conflicts, and usability rules.
+- [Deployment instructions](docs/deployment.md): local run and current release workflow.
 
-Understanding the actual financial outcome, conditions, penalties,
-fees, liquidity and trade-offs is difficult.
+## Run locally
 
-## Solution
+Requirements: Python 3.11+ and Node.js compatible with the version in the frontend lockfile (Node 20+ recommended).
 
-Bankwise parses FD requirements, compares source-verified products, performs
-deterministic calculations, and explains trade-offs from verified result data.
-The current decision response does not use model-generated financial prose.
+In terminal 1, start the API:
 
-## Example
-
-> I have ₹5 lakh and want to invest for 2 years.
-> I may need the money early.
-
-Bankwise:
-
-1. Understands the requirement.
-2. Finds relevant products.
-3. Verifies banking data.
-4. Calculates expected outcomes.
-5. Compares conditions and liquidity.
-6. Explains the trade-offs.
-7. Shows the sources.
-
-## Current MVP
-
-The MVP focuses on Fixed Deposits.
-
-Supported:
-
-- Product comparison
-- FD calculations
-- Liquidity comparison
-- Premature withdrawal comparison
-- Source verification
-- Conflict detection
-- Structured, deterministic explanations
-
-## Architecture
-
-```text
-User
- ↓
-Next.js
- ↓
-Cloud Run / FastAPI
- ↓
-Requirement parsing and decision API
- ↓
-Research / Calculation / Verification
- ↓
-BigQuery catalogue + Firestore sessions
- ↓
-Decision Engine
- ↓
-Deterministic Explanation
+```sh
+cd backend
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+cp .env.example .env
+uvicorn app.main:app --reload --port 8080
 ```
 
-## Backend
+In terminal 2, create the frontend environment file, fill in the Firebase web values from your Firebase project, then start the UI:
 
-The Python FastAPI service is in [`backend/README.md`](backend/README.md). It reads curated product and source records from BigQuery and stores redacted decision-session state in Firestore. The catalogue starts empty until official product data and source metadata are curated.
+```sh
+cd frontend
+npm ci
+cp .env.example .env.local
+npm run dev
+```
 
-## Continuous integration
+Set the Firebase values in `frontend/.env.local` before running `npm run dev` if you want to use browser sign-in.
 
-GitHub Actions runs `frontend-lint`, `frontend-typecheck`, `frontend-build`,
-`backend-lint`, and `backend-test` for pull requests and pushes to `main`. To make these checks
-block merges, configure the repository's branch protection or ruleset for
-`main` and require all five status checks.
+Visit <http://localhost:3000>. Local backend mode uses `backend/data/fd-products.json` and in-memory sessions; it does not need Google Cloud credentials. Authentication still needs a configured Firebase project to complete the sign-in flow. The API can be exercised directly with a local auth session/token setup; see [deployment and local configuration](docs/deployment.md).
 
-## Production deployment
+The frontend expects `NEXT_PUBLIC_BANKWISE_API_URL=http://localhost:8080` for direct local API requests. The `.env.example` has this value. Do not commit `.env` or `.env.local`.
 
-Publishing a GitHub release runs `.github/workflows/deploy-production.yaml`.
-After backend and frontend CI pass, the workflow builds and pushes the backend
-image, builds the production static frontend, deploys the backend to Cloud Run,
-then deploys the frontend to Firebase Hosting. Production project IDs and
-service settings are in `.github/config/production.yaml`; the Firebase project
-ID is configured separately from the Google Cloud project ID. Configure
-`GCP_WORKLOAD_IDENTITY_PROVIDER`, `NEXT_PUBLIC_FIREBASE_API_KEY`, and
-`NEXT_PUBLIC_FIREBASE_APP_ID` as GitHub Actions variables, with the Firebase
-web values available to the `production` environment. Non-sensitive backend
-runtime settings are in the `cloud_run.runtime` section of
-`.github/config/production.yaml`, including the allowed `cors_origins`, and are
-passed to Cloud Run by the config loader. The frontend build gets
-`NEXT_PUBLIC_BANKWISE_API_URL` from the backend's `cloud_run.url` setting in the
-same file.
-`CSRF_SECRET` remains a Google Secret Manager secret; project IDs and Cloud Run
-region also come from `.github/config/production.yaml`.
+## Checks
+
+```sh
+cd backend
+pip install -r requirements-dev.txt
+python -m ruff check app tests
+python -m pytest
+```
+
+```sh
+cd frontend
+npm ci
+npm run lint
+npm run typecheck
+npm run build
+```
+
+## Current scope and trust boundary
+
+Only fixed deposits are supported. The product catalogue is manually curated; no live bank-site crawler is enabled. `/api/ask` redacts sensitive input, deterministically extracts numeric requirements, filters verified products, calculates outcomes, and returns a deterministic explanation. Gemini/ADK integration code is optional and is not called by the live `/api/ask` workflow. Financial amounts and trade-off metrics come from backend code and are not model-generated.
+
+Only current, conflict-free `HIGH` rates can be used to calculate maturity. If no usable rate or its required compounding convention exists, the API withholds the amount and gives a reason. Generic compound interest can differ from a bank's exact day-count and rounding rules; results carry a warning.
+
+## Repository map
+
+```text
+backend/app/api/          HTTP routes, auth and request security
+backend/app/domain/       parsing, source rules, catalogue shaping, comparison
+backend/app/calculators/  deterministic financial formulas
+backend/app/repositories/ local JSON, BigQuery, memory and Firestore adapters
+backend/data/             local catalogue seed
+backend/sql/              production BigQuery schema
+backend/tests/             backend tests
+frontend/app/              Next.js routes
+frontend/components/       page and shared UI components
+frontend/lib/               API client, auth, formatting, and view helpers
+docs/                      product and engineering documentation
+```
+
+## Production at a glance
+
+Production is configured for BigQuery catalogue data, Firestore decision sessions, Firebase Authentication/Hosting, and Cloud Run. A published GitHub release triggers `.github/workflows/deploy-production.yaml`; CI runs first, then it deploys the API and static frontend. See [deployment instructions](docs/deployment.md) before changing production settings.
+
+## Contributing
+
+Keep business rules and calculations deterministic, attach provenance to financial facts, preserve conflicts instead of choosing silently, and update the relevant docs when behavior changes. See [CONTRIBUTING.md](CONTRIBUTING.md) and [AGENTS.md](AGENTS.md).
