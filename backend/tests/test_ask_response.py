@@ -4,7 +4,7 @@ from app.ai.ask_response import to_ask_response
 def test_ask_response_matches_comparison_card_fields_and_does_not_guess_exit_date():
     product = {
         "id": "hdfc-fd",
-        "bank": "HDFC Bank",
+        "bank": {"id": "hdfc", "name": "HDFC Bank", "website": "https://hdfcbank.com"},
         "name": "Regular Fixed Deposit",
         "rates": [
             {
@@ -67,6 +67,8 @@ def test_ask_response_matches_comparison_card_fields_and_does_not_guess_exit_dat
 
     option = result["options"][0]
     assert result["status"] == "OK"
+    assert option["bank"] == "HDFC Bank"
+    assert "HDFC Bank has the highest calculated maturity" in result["explanation"]
     assert option["rate"] == "6.45%"
     assert option["maturity"] == "₹5,68,000"
     assert option["interest"] == "₹68,000"
