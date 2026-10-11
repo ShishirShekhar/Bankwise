@@ -21,7 +21,7 @@ def test_chunking_and_ids_are_stable_and_bounded():
     assert normalize_url("HTTPS://Bank.Example/rates#section") == "https://bank.example/rates"
 
 
-def test_bigquery_ingestion_uses_parameterized_idempotent_merges():
+def test_bigquery_ingestion_uses_parameterized_idempotent_merges(monkeypatch):
     class Job:
         def result(self):
             return []
@@ -37,6 +37,7 @@ def test_bigquery_ingestion_uses_parameterized_idempotent_merges():
     class Embedder:
         model = "gemini-embedding-001"
 
+    monkeypatch.setattr("app.repositories.rag.BIGQUERY_PROJECT", "test-project")
     client = Client()
     repository = BigQueryRagRepository(client=client, dataset="bankwise_rag", embedder=Embedder())
     document = {"document_id": "d1", "canonical_url": "https://bank.example/fd",
