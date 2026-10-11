@@ -1,0 +1,47 @@
+{
+  "suite_id": "bankwise_agent_trust",
+  "description": "Deterministic acceptance cases for the Bankwise agent trust boundaries.",
+  "cases": [
+    {
+      "id": "verified_rate_calculates",
+      "operation": "calculation",
+      "product_id": "hdfc-bank-regular-fixed-deposit",
+      "principal": 500000,
+      "tenure_months": 24,
+      "expected_status": "CALCULATED",
+      "expected_calculation_version": "fd-v1"
+    },
+    {
+      "id": "unverified_rate_is_blocked",
+      "operation": "calculation",
+      "product_id": "state-bank-of-india-retail-domestic-term-deposit",
+      "principal": 500000,
+      "tenure_months": 24,
+      "expected_status": "BLOCKED",
+      "expected_reason_contains": "not verified at HIGH confidence"
+    },
+    {
+      "id": "conflicting_rate_is_blocked",
+      "operation": "calculation",
+      "product_id": "punjab-national-bank-domestic-fixed-deposit",
+      "principal": 500000,
+      "tenure_months": 24,
+      "expected_status": "BLOCKED",
+      "expected_reason_contains": "unresolved source conflict"
+    },
+    {
+      "id": "comparison_exposes_tradeoffs",
+      "operation": "comparison",
+      "product_ids": ["hdfc-bank-regular-fixed-deposit", "icici-bank-regular-fixed-deposit"],
+      "principal": 500000,
+      "tenure_months": 24,
+      "expected_tradeoff": true
+    },
+    {
+      "id": "sensitive_input_is_redacted",
+      "operation": "redaction",
+      "query": "Compare FDs for 500000; PAN ABCDE1234F",
+      "must_not_contain": "ABCDE1234F"
+    }
+  ]
+}

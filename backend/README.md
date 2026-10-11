@@ -28,7 +28,7 @@ python -m pytest
 
 Local mode is the default (`ENVIRONMENT=local`): it reads `data/fd-products.json` and stores sessions in memory without Google Cloud calls. Production selects BigQuery and Firestore. `/api/ask` runs deterministic requirement, verification, calculation, and explanation stages; it reads current verified RAG evidence and invokes Google Search grounding when RAG returns no eligible chunks. Research evidence is isolated from the canonical catalogue. An explicit, bounded source ingestion command stores excerpts and pending candidates; it never promotes rate records.
 
-Production BigQuery schema and import commands are described in [deployment](../docs/deployment.md). Calculation evaluation fixtures live in `evals/fd_calculation/`; regular tests validate them without calling Gemini. An optional live Gemini evaluation can be run with Vertex AI credentials:
+Production BigQuery schema and import commands are described in [deployment](../docs/deployment.md). Offline agent acceptance cases live in `evals/bankwise_agent/` and cover sourced calculations, blocked unverified and conflicting rates, trade-off output, and input redaction. They run as part of `python -m pytest` without model or cloud credentials. Calculation-agent ADK fixtures live in `evals/fd_calculation/`; an optional live Gemini evaluation can be run with Vertex AI credentials:
 
 Initialize both BigQuery datasets with `python -m scripts.create_bigquery_dataset`. Run a one-source ingestion only for an explicitly allow-listed public domain with `python -m scripts.ingest_public_source URL --allowed-domain bank.example`.
 
