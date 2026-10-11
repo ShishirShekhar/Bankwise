@@ -9,7 +9,25 @@ gcp:
 
 cloud_run:
   service_name: bankwise-api
+  url: https://bankwise-api-2170676577.us-central1.run.app
   artifact_registry_repository: bankwise
+  runtime:
+    gemini_model: gemini-2.5-flash
+    google_genai_use_vertexai: "TRUE"
+    google_cloud_location: us-central1
+    bigquery_dataset: bankwise
+    bigquery_location: US
+    firestore_database: bankwise
+    firestore_collection: decision_sessions
+    source_max_age_days: "90"
+    ask_rate_limit: "10"
+    ask_rate_window_seconds: "60"
+    log_level: INFO
+    auth_cookie_secure: "true"
+    auth_cookie_samesite: none
+    cors_origins:
+      - https://bankwise-510917.web.app
+      - https://bankwise-510917.firebaseapp.com
 
 firebase:
   project_id: bankwise-510917
