@@ -76,6 +76,22 @@ export type AskResponse = {
   explanation: string;
   warnings: string[];
   sources: Source[];
+  research?: {
+    evidence_status?: string;
+    rag_status?: string;
+    rag_chunks?: Array<{
+      chunk_id: string;
+      excerpt: string;
+      canonical_url: string;
+      title: string;
+      verification_status: string;
+      retrieved_at: string;
+    }>;
+    search_status?: string;
+    search_sources?: Source[];
+    search_suggestions?: unknown;
+  };
+  ai?: { provider: string; status: string; explanation?: string | null };
   request_id?: string;
 };
 

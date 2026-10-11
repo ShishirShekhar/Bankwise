@@ -1,9 +1,18 @@
-"""Request-scoped Google ADK orchestration for grounded decision explanations."""
+"""Request-scoped Google ADK explanation agent over verified decision context."""
+
+import json
+import re
+from decimal import Decimal, InvalidOperation
+
+from google.api_core.exceptions import GoogleAPIError
+from google.auth.exceptions import GoogleAuthError
+from google.genai.errors import APIError
 
 from app.config import GEMINI_MODEL, GOOGLE_CLOUD_PROJECT
 
 BASE_RULES = """Never invent rates, fees, penalties, eligibility rules, source dates, or financial outcomes.
 Use only the request's verified decision context for product facts and calculations.
+Only cite URLs listed under verified_sources. Never treat pending research citations as verification.
 Explicitly surface CONFLICT and stale sources. Never request PAN, Aadhaar, account/card numbers, CVV,
 UPI credentials, or banking passwords."""
 
@@ -96,7 +105,34 @@ async def run_decision_agent(query: str, requirements: dict, decision_context: d
                 response_text.extend(
                     part.text for part in event.content.parts if part.text
                 )
-        return "".join(response_text).strip() or None
-    except (ImportError, RuntimeError, OSError, ValueError):
+        explanation = "".join(response_text).strip()
+        return explanation if _is_grounded_explanation(explanation, decision_context) else None
+    except (ImportError, RuntimeError, OSError, ValueError, GoogleAPIError, GoogleAuthError, APIError):
         # The structured API result remains usable if ADK/model access is unavailable.
         return None
+
+
+def _is_grounded_explanation(explanation: str, context: dict) -> bool:
+    """Reject model prose that drops required sections, adds numbers, or invents URLs."""
+    required = ("Executive Decision Summary", "The Key Trade-off", "Conditions & Transparency")
+    if not explanation or not all(item.lower() in explanation.lower() for item in required):
+        return False
+    context_text = json.dumps(context, default=str)
+    number_pattern = re.compile(r"(?<![\w])(?:\d{1,3}(?:,\d{2,3})+|\d+(?:\.\d+)?)(?![\w])")
+    allowed = set()
+    for match in number_pattern.finditer(context_text):
+        try:
+            allowed.add(Decimal(match.group().replace(",", "")))
+        except InvalidOperation:
+            continue
+    for match in number_pattern.finditer(explanation):
+        try:
+            value = Decimal(match.group().replace(",", ""))
+        except InvalidOperation:
+            return False
+        if value not in allowed and value not in {Decimal(1), Decimal(2), Decimal(3)}:
+            return False
+    clean_url = lambda url: url.rstrip(".,;]'\"}")
+    allowed_urls = {clean_url(url) for url in re.findall(r"https?://[^\s)]+", context_text)}
+    cited_urls = {clean_url(url) for url in re.findall(r"https?://[^\s)]+", explanation)}
+    return cited_urls.issubset(allowed_urls)

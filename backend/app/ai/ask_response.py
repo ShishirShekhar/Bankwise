@@ -259,4 +259,5 @@ def to_ask_response(result: dict) -> dict:
         "request_id": result.get("request_id"),
         "session_id": result.get("session_id"),
         "session_persisted": result.get("session_persisted"),
+        "research": result.get("research"),
     }

@@ -27,10 +27,14 @@ jobs:
       service_name: ${{ steps.config.outputs.service_name }}
       artifact_registry_repository: ${{ steps.config.outputs.artifact_registry_repository }}
       gemini_model: ${{ steps.config.outputs.gemini_model }}
+      enable_adk_explanation: ${{ steps.config.outputs.enable_adk_explanation }}
       google_genai_use_vertexai: ${{ steps.config.outputs.google_genai_use_vertexai }}
       google_cloud_location: ${{ steps.config.outputs.google_cloud_location }}
+      google_search_location: ${{ steps.config.outputs.google_search_location }}
       bigquery_dataset: ${{ steps.config.outputs.bigquery_dataset }}
       bigquery_location: ${{ steps.config.outputs.bigquery_location }}
+      rag_dataset: ${{ steps.config.outputs.rag_dataset }}
+      embedding_model: ${{ steps.config.outputs.embedding_model }}
       firestore_database: ${{ steps.config.outputs.firestore_database }}
       firestore_collection: ${{ steps.config.outputs.firestore_collection }}
       source_max_age_days: ${{ steps.config.outputs.source_max_age_days }}
@@ -239,11 +243,15 @@ jobs:
             ENVIRONMENT=production
             GOOGLE_CLOUD_PROJECT=${{ needs.production-config.outputs.gcp_project_id }}
             GOOGLE_CLOUD_LOCATION=${{ needs.production-config.outputs.google_cloud_location }}
+            GOOGLE_SEARCH_LOCATION=${{ needs.production-config.outputs.google_search_location }}
             GEMINI_MODEL=${{ needs.production-config.outputs.gemini_model }}
+            ENABLE_ADK_EXPLANATION=${{ needs.production-config.outputs.enable_adk_explanation }}
             GOOGLE_GENAI_USE_VERTEXAI=${{ needs.production-config.outputs.google_genai_use_vertexai }}
             BIGQUERY_PROJECT=${{ needs.production-config.outputs.gcp_project_id }}
             BIGQUERY_DATASET=${{ needs.production-config.outputs.bigquery_dataset }}
             BIGQUERY_LOCATION=${{ needs.production-config.outputs.bigquery_location }}
+            RAG_DATASET=${{ needs.production-config.outputs.rag_dataset }}
+            EMBEDDING_MODEL=${{ needs.production-config.outputs.embedding_model }}
             FIREBASE_PROJECT_ID=${{ needs.production-config.outputs.firebase_project_id }}
             FIRESTORE_PROJECT=${{ needs.production-config.outputs.firebase_project_id }}
             FIRESTORE_DATABASE=${{ needs.production-config.outputs.firestore_database }}

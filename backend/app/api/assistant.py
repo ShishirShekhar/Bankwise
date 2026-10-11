@@ -3,12 +3,14 @@
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException
+from google.auth.exceptions import GoogleAuthError
 
 from app.ai.ask_response import to_ask_response
 from app.ai.decision_workflow import run_decision_workflow
 from app.api.auth import require_authenticated_user
 from app.api.dependencies import get_catalog, get_sessions
 from app.api.security import enforce_ask_rate_limit, require_csrf
+from app.config import ENVIRONMENT, GOOGLE_CLOUD_PROJECT
 from app.schemas import DecisionRequest
 
 router = APIRouter()
@@ -29,5 +31,32 @@ async def ask_endpoint(
             "Too many comparison requests. Please retry later.",
             headers={"Retry-After": str(retry_after)},
         )
-    result = await run_decision_workflow(request.query, catalog, sessions, user["uid"])
+    rag_repository = None
+    searcher = None
+    if ENVIRONMENT == "production":
+        try:
+            from app.repositories.rag import BigQueryRagRepository
+
+            rag_repository = BigQueryRagRepository()
+        except (ImportError, RuntimeError, OSError, ValueError, GoogleAuthError):
+            # The workflow records unavailable internal retrieval and continues
+            # only with independently verified canonical catalogue records.
+            from app.ai.specialists import UnavailableRagRepository
+
+            rag_repository = UnavailableRagRepository()
+        if GOOGLE_CLOUD_PROJECT:
+            try:
+                from app.ai.research import GoogleSearchResearcher
+
+                searcher = GoogleSearchResearcher()
+            except (ImportError, RuntimeError, OSError, ValueError, GoogleAuthError):
+                from app.ai.specialists import UnavailableSearcher
+
+                searcher = UnavailableSearcher()
+    if ENVIRONMENT != "production":
+        result = await run_decision_workflow(request.query, catalog, sessions, user["uid"])
+    else:
+        result = await run_decision_workflow(
+            request.query, catalog, sessions, user["uid"], rag_repository, searcher
+        )
     return to_ask_response(result)
