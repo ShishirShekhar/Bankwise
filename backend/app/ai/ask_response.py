@@ -3,6 +3,14 @@
 from decimal import ROUND_HALF_UP, Decimal
 
 
+def _bank_name(bank: str | dict | None) -> str:
+    """Return the display name for either catalog repository's bank shape."""
+    if isinstance(bank, dict):
+        name = bank.get("name")
+        return name if isinstance(name, str) and name else "Unknown bank"
+    return bank if isinstance(bank, str) and bank else "Unknown bank"
+
+
 def _inr(value: float | None) -> str | None:
     if value is None:
         return None
@@ -32,7 +40,7 @@ def to_ask_response(result: dict) -> dict:
     skipped = []
     for comparison in comparisons if category in (None, "FD") else []:
         product = comparison["product"]
-        bank = product["bank"]
+        bank = _bank_name(product.get("bank"))
         if not comparison["eligible"]:
             skipped.append(
                 {"bank": bank, "reason": "No rate slab matches this amount and duration"}
