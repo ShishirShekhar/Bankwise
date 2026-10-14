@@ -20,6 +20,15 @@ _PAN_VALUE = re.compile(r"\b[A-Z]{5}[0-9]{4}[A-Z]\b", re.IGNORECASE)
 # UPI IDs (name@bank) and email addresses; bounded to keep matching linear.
 _HANDLE_VALUE = re.compile(r"\b[\w.-]{1,64}@[A-Za-z][\w.-]{1,63}")
 _REDACTED = "[REDACTED]"
+_DURATION = re.compile(
+    r"(?<![\w.])(?P<value>\d{1,4}(?:\.\d{1,2})?)\s*-?\s*(?P<unit>years?|months?)\b",
+    re.IGNORECASE,
+)
+# Ages such as "65 years old", "65-year-old", "60 years of age", "aged 70 years".
+_AGE_SUFFIX = re.compile(r"\s*-?\s*(?:old\b|of\s+age\b)", re.IGNORECASE)
+_AGE_PREFIX = re.compile(r"(?:\baged?|\bage\s+is|\bi\s+am|\bi'?m)\s*$", re.IGNORECASE)
+# Separator allowed inside a compound duration such as "1 year and 6 months".
+_COMPOUND_JOIN = re.compile(r"\s*(?:,|and|&)?\s*", re.IGNORECASE)
 
 
 def _skip_spaces(text: str, index: int) -> int:
@@ -117,6 +126,38 @@ def _redact_long_numbers(text: str) -> str:
     return "".join(parts)
 
 
+def _extract_tenure_months(query: str) -> int | None:
+    """Deposit tenure in months, ignoring ages; None when absent or ambiguous.
+
+    Every year/month expression is considered, not only the first, so an age
+    such as "65 years old" is skipped rather than read as the deposit period.
+    "1 year 6 months" is combined into 18. Two different remaining durations
+    are ambiguous and return None so the user is asked instead of guessed for.
+    """
+    durations: list[int] = []
+    previous_year = None
+    for match in _DURATION.finditer(query):
+        if _AGE_SUFFIX.match(query, match.end()) or _AGE_PREFIX.search(
+            query, 0, match.start()
+        ):
+            previous_year = None
+            continue
+        value = float(match.group("value"))
+        if match.group("unit").lower().startswith("year"):
+            durations.append(int(value * 12))
+            previous_year = match
+            continue
+        if previous_year is not None and _COMPOUND_JOIN.fullmatch(
+            query, previous_year.end(), match.start()
+        ):
+            durations[-1] += int(value)
+        else:
+            durations.append(int(value))
+        previous_year = None
+    distinct = set(durations)
+    return distinct.pop() if len(distinct) == 1 else None
+
+
 def extract_requirements(query: str, use_gemini: bool = True) -> Requirements:
     """Redact user input, then extract only requirements stated explicitly."""
     return extract_requirements_from_safe_query(
@@ -152,13 +193,7 @@ def extract_requirements_from_safe_query(
             if scale.startswith("crore")
             else 1
         )
-    tenure = None
-    years = re.search(r"(\d{1,4}(?:\.\d{1,2})?)\s*years?", query, re.IGNORECASE)
-    months = re.search(r"(\d{1,4})\s*months?", query, re.IGNORECASE)
-    if years:
-        tenure = int(float(years.group(1)) * 12)
-    elif months:
-        tenure = int(months.group(1))
+    tenure = _extract_tenure_months(query)
     try:
         from google import genai
         from google.genai import types
