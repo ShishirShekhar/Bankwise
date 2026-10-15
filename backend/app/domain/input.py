@@ -24,11 +24,35 @@ _DURATION = re.compile(
     r"(?<![\w.])(?P<value>\d{1,4}(?:\.\d{1,2})?)\s*-?\s*(?P<unit>years?|months?)\b",
     re.IGNORECASE,
 )
-# Ages such as "65 years old", "65-year-old", "60 years of age", "aged 70 years".
-_AGE_SUFFIX = re.compile(r"\s*-?\s*(?:old\b|of\s+age\b)", re.IGNORECASE)
-_AGE_PREFIX = re.compile(r"(?:\baged?|\bage\s+is|\bi\s+am|\bi'?m)\s*$", re.IGNORECASE)
-# Separator allowed inside a compound duration such as "1 year and 6 months".
-_COMPOUND_JOIN = re.compile(r"\s*(?:,|and|&)?\s*", re.IGNORECASE)
+def _is_age_expression(query: str, start: int, end: int) -> bool:
+    """Recognize age wording using bounded string operations."""
+    suffix = query[end:].lstrip()
+    if suffix.startswith("-"):
+        suffix = suffix[1:].lstrip()
+    suffix_lower = suffix.casefold()
+    if suffix_lower.startswith("old") and (
+        len(suffix_lower) == 3
+        or not (suffix_lower[3].isalnum() or suffix_lower[3] == "_")
+    ):
+        return True
+    if suffix_lower.startswith("of age") and (
+        len(suffix_lower) == 6
+        or not (suffix_lower[6].isalnum() or suffix_lower[6] == "_")
+    ):
+        return True
+
+    prefix = query[:start].casefold().rstrip()
+    for phrase in ("aged", "age", "age is", "i am", "i'm", "im"):
+        if prefix.endswith(phrase):
+            preceding = prefix[: -len(phrase)]
+            if not preceding or not (preceding[-1].isalnum() or preceding[-1] == "_"):
+                return True
+    return False
+
+
+def _is_compound_join(separator: str) -> bool:
+    """Allow only simple separators between year and month durations."""
+    return separator.strip().casefold() in ("", ",", "and", "&")
 
 
 def _skip_spaces(text: str, index: int) -> int:
@@ -137,9 +161,7 @@ def _extract_tenure_months(query: str) -> int | None:
     durations: list[int] = []
     previous_year = None
     for match in _DURATION.finditer(query):
-        if _AGE_SUFFIX.match(query, match.end()) or _AGE_PREFIX.search(
-            query, 0, match.start()
-        ):
+        if _is_age_expression(query, match.start(), match.end()):
             previous_year = None
             continue
         value = float(match.group("value"))
@@ -147,8 +169,8 @@ def _extract_tenure_months(query: str) -> int | None:
             durations.append(int(value * 12))
             previous_year = match
             continue
-        if previous_year is not None and _COMPOUND_JOIN.fullmatch(
-            query, previous_year.end(), match.start()
+        if previous_year is not None and _is_compound_join(
+            query[previous_year.end() : match.start()]
         ):
             durations[-1] += int(value)
         else:
