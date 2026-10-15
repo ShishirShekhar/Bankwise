@@ -84,3 +84,16 @@ def test_tenure_without_rate_slab_is_reported_without_crashing():
     assert result["products"]
     assert all(not item["eligible"] for item in result["products"])
     assert result["warnings"]
+
+
+def test_exact_36_month_tenure_matches_source_bands_without_gaps():
+    catalog = LocalJsonCatalog()
+    products = catalog.list_products(category="FD", status="ACTIVE")
+    result = compare_products(
+        catalog,
+        [product["id"] for product in products],
+        amount=300000,
+        tenure=36,
+    )
+
+    assert all(item["eligible"] for item in result["products"])
