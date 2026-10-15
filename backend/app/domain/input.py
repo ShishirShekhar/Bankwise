@@ -21,9 +21,24 @@ _PAN_VALUE = re.compile(r"\b[A-Z]{5}[0-9]{4}[A-Z]\b", re.IGNORECASE)
 _HANDLE_VALUE = re.compile(r"\b[\w.-]{1,64}@[A-Za-z][\w.-]{1,63}")
 _REDACTED = "[REDACTED]"
 _DURATION = re.compile(
-    r"(?<![\w.])(?P<value>\d{1,4}(?:\.\d{1,2})?)\s*-?\s*(?P<unit>years?|months?)\b",
-    re.IGNORECASE,
+    r"(?<![\w.])(?P<value>\d{1,4}(?:\.\d{1,2})?)"
 )
+
+
+def _duration_unit_end(text: str, index: int) -> tuple[str, int] | None:
+    """Read a duration unit after a number with linear whitespace scanning."""
+    index = _skip_spaces(text, index)
+    if index < len(text) and text[index] == "-":
+        index = _skip_spaces(text, index + 1)
+    for unit in ("years", "year", "months", "month"):
+        if text[index : index + len(unit)].casefold() != unit:
+            continue
+        end = index + len(unit)
+        if end == len(text) or not (text[end].isalnum() or text[end] == "_"):
+            return unit, end
+    return None
+
+
 def _is_age_expression(query: str, start: int, end: int) -> bool:
     """Recognize age wording using bounded string operations."""
     suffix = query[end:].lstrip()
@@ -159,23 +174,27 @@ def _extract_tenure_months(query: str) -> int | None:
     are ambiguous and return None so the user is asked instead of guessed for.
     """
     durations: list[int] = []
-    previous_year = None
+    previous_year_end = None
     for match in _DURATION.finditer(query):
-        if _is_age_expression(query, match.start(), match.end()):
-            previous_year = None
+        unit_match = _duration_unit_end(query, match.end())
+        if unit_match is None:
+            continue
+        unit, duration_end = unit_match
+        if _is_age_expression(query, match.start(), duration_end):
+            previous_year_end = None
             continue
         value = float(match.group("value"))
-        if match.group("unit").lower().startswith("year"):
+        if unit.startswith("year"):
             durations.append(int(value * 12))
-            previous_year = match
+            previous_year_end = duration_end
             continue
-        if previous_year is not None and _is_compound_join(
-            query[previous_year.end() : match.start()]
+        if previous_year_end is not None and _is_compound_join(
+            query[previous_year_end : match.start()]
         ):
             durations[-1] += int(value)
         else:
             durations.append(int(value))
-        previous_year = None
+        previous_year_end = None
     distinct = set(durations)
     return distinct.pop() if len(distinct) == 1 else None
 
