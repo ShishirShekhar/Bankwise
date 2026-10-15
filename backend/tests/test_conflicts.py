@@ -169,6 +169,58 @@ def test_catalog_detects_condition_disagreement(tmp_path):
     assert not catalog.get_conflicts(HDFC, field_name="rate")
 
 
+def test_equal_pnb_rate_observations_do_not_create_a_tenure_conflict(tmp_path):
+    data = json.loads(DATA_FILE.read_text(encoding="utf-8"))
+    data["source_conflicts"].append(
+        {
+            "bank_name": "Punjab National Bank",
+            "product_name": "Domestic Fixed Deposit",
+            "field_name": "rate",
+            "value_a": 6.3,
+            "value_b": 6.30,
+            "source_a": "first source",
+            "source_b": "second source",
+            "status": "OPEN",
+            "tenure_min_months": 24,
+            "tenure_max_months": 24,
+        }
+    )
+    data["source_conflicts"].append(
+        {
+            "bank_name": "Punjab National Bank",
+            "product_name": "Domestic Fixed Deposit",
+            "field_name": "rate",
+            "value_a": 6.3,
+            "value_b": 6.30,
+            "source_a": "older source",
+            "source_b": "newer source",
+            "status": "OPEN",
+            "tenure_min_months": 24,
+            "tenure_max_months": 24,
+            "effective_from_a": "2025-01-01",
+            "effective_from_b": "2026-01-01",
+        }
+    )
+    data_file = tmp_path / "fd-products.json"
+    data_file.write_text(json.dumps(data), encoding="utf-8")
+    catalog = LocalJsonCatalog(data_file)
+    conflicts = catalog.get_conflicts(
+        "punjab-national-bank-domestic-fixed-deposit", field_name="rate"
+    )
+
+    assert any(
+        conflict.get("tenure_min_months") == 24
+        and conflict.get("effective_from_a") == "2025-01-01"
+        for conflict in conflicts
+    )
+    assert any(conflict.get("tenure_min_months") == 12 for conflict in conflicts)
+    assert any(
+        conflict.get("tenure_min_months") == 25
+        and conflict["value_a"] != conflict["value_b"]
+        for conflict in conflicts
+    )
+
+
 def test_recorded_resolution_unblocks_the_band_with_the_confirmed_value(tmp_path):
     resolution = {
         "bank_name": "HDFC Bank",

@@ -222,6 +222,24 @@ class LocalJsonCatalog:
             Product.from_row(product)
 
         for record in data.get("source_conflicts", []):
+            # Hand-curated conflicts can outlive an interval correction. A
+            # conflict requires different observed values; identical values
+            # across adjacent source bands are not a financial disagreement.
+            has_applicability_disagreement = any(
+                record.get(left) != record.get(right)
+                and (record.get(left) is not None or record.get(right) is not None)
+                for left, right in (
+                    ("effective_from_a", "effective_from_b"),
+                    ("effective_to_a", "effective_to_b"),
+                    ("applicability_a", "applicability_b"),
+                )
+            )
+            if (
+                normalize_value(record.get("value_a"))
+                == normalize_value(record.get("value_b"))
+                and not has_applicability_disagreement
+            ):
+                continue
             product_id = self._product_id(record)
             conflict = {
                 "id": _slug(

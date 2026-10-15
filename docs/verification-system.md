@@ -20,7 +20,7 @@ Stored verification status is also considered; only `HIGH` remains eligible for 
 
 ## Conflicts
 
-Local source observations are compared for the same product, field and rate band. Values are normalized (numeric rounding, or trimmed and case-folded text) before comparing. Disagreement creates an open conflict storing both source IDs and values. The system never silently selects one.
+Local source observations are compared for the same product, field and rate band. Values are normalized (numeric rounding, or trimmed and case-folded text) before comparing. Different values create an open conflict storing both source IDs and values. A legacy hand-recorded conflict with identical normalized values is ignored when it carries no differing effective-date or applicability metadata; a conflict with such metadata remains visible for review.
 
 An open rate conflict blocks the affected band; a hand-recorded conflict without a band blocks all rates for that field. An open condition conflict marks the matching condition type. Conflict facts appear in product payloads and the conflict endpoint. A resolved conflict remains in history. Resolution must choose one of the observed values and include notes; unresolved or invalid resolution leaves it open.
 
