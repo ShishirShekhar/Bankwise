@@ -2,6 +2,8 @@
 
 The production schema is defined in [`backend/sql/bigquery_schema.sql`](../backend/sql/bigquery_schema.sql). BigQuery does not enforce declared relational constraints, so application/import code must keep references valid. The local JSON source is [`backend/data/fd-products.json`](../backend/data/fd-products.json); it is normalized by `LocalJsonCatalog` into the same runtime-shaped records.
 
+Local catalogue tenure slabs use inclusive whole months. A bank slab that includes a term through exactly three years must therefore include month 36; a slab that starts after three years begins at month 37. Day-specific exceptions remain unavailable to month-only requests unless the source terms can be mapped without overlap.
+
 ## Catalogue entities
 
 | Entity | Purpose | Important fields |

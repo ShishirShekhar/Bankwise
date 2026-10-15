@@ -142,9 +142,9 @@ def test_catalog_detects_rate_disagreement_and_blocks_only_that_band(tmp_path):
 
     conflicts = catalog.get_conflicts(HDFC, field_name="rate")
     assert len(conflicts) == 1
-    assert conflicts[0]["rate_id"] == f"{HDFC}-24-35"
+    assert conflicts[0]["rate_id"] == f"{HDFC}-24-36"
     assert {conflicts[0]["value_a"], conflicts[0]["value_b"]} == {6.45, 7.0}
-    assert rate_verification(catalog, HDFC, rates[f"{HDFC}-24-35"])[0] == "CONFLICT"
+    assert rate_verification(catalog, HDFC, rates[f"{HDFC}-24-36"])[0] == "CONFLICT"
     assert rate_verification(catalog, HDFC, rates[f"{HDFC}-12-14"]) == ("HIGH", None)
 
     result = compare_products(catalog, [HDFC], amount=500000, tenure=24)["products"][0]
@@ -174,14 +174,14 @@ def test_recorded_resolution_unblocks_the_band_with_the_confirmed_value(tmp_path
         "bank_name": "HDFC Bank",
         "product_name": "Regular Fixed Deposit",
         "field_name": "rate",
-        "key": "24-35",
+        "key": "24-36",
         "resolved_value": 7.0,
         "resolution_notes": "Rate card PDF supersedes the web page",
         "resolved_at": "2026-10-05",
     }
     catalog = _catalog_with(tmp_path, [{"interest_rate": 7.0}], [resolution])
     rate = next(
-        r for r in catalog.get_product(HDFC)["rates"] if r["id"] == f"{HDFC}-24-35"
+        r for r in catalog.get_product(HDFC)["rates"] if r["id"] == f"{HDFC}-24-36"
     )
 
     assert not catalog.get_conflicts(HDFC)
