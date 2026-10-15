@@ -20,6 +20,54 @@ _PAN_VALUE = re.compile(r"\b[A-Z]{5}[0-9]{4}[A-Z]\b", re.IGNORECASE)
 # UPI IDs (name@bank) and email addresses; bounded to keep matching linear.
 _HANDLE_VALUE = re.compile(r"\b[\w.-]{1,64}@[A-Za-z][\w.-]{1,63}")
 _REDACTED = "[REDACTED]"
+_DURATION = re.compile(
+    r"(?<![\w.])(?P<value>\d{1,4}(?:\.\d{1,2})?)"
+)
+
+
+def _duration_unit_end(text: str, index: int) -> tuple[str, int] | None:
+    """Read a duration unit after a number with linear whitespace scanning."""
+    index = _skip_spaces(text, index)
+    if index < len(text) and text[index] == "-":
+        index = _skip_spaces(text, index + 1)
+    for unit in ("years", "year", "months", "month"):
+        if text[index : index + len(unit)].casefold() != unit:
+            continue
+        end = index + len(unit)
+        if end == len(text) or not (text[end].isalnum() or text[end] == "_"):
+            return unit, end
+    return None
+
+
+def _is_age_expression(query: str, start: int, end: int) -> bool:
+    """Recognize age wording using bounded string operations."""
+    suffix = query[end:].lstrip()
+    if suffix.startswith("-"):
+        suffix = suffix[1:].lstrip()
+    suffix_lower = suffix.casefold()
+    if suffix_lower.startswith("old") and (
+        len(suffix_lower) == 3
+        or not (suffix_lower[3].isalnum() or suffix_lower[3] == "_")
+    ):
+        return True
+    if suffix_lower.startswith("of age") and (
+        len(suffix_lower) == 6
+        or not (suffix_lower[6].isalnum() or suffix_lower[6] == "_")
+    ):
+        return True
+
+    prefix = query[:start].casefold().rstrip()
+    for phrase in ("aged", "age", "age is", "i am", "i'm", "im"):
+        if prefix.endswith(phrase):
+            preceding = prefix[: -len(phrase)]
+            if not preceding or not (preceding[-1].isalnum() or preceding[-1] == "_"):
+                return True
+    return False
+
+
+def _is_compound_join(separator: str) -> bool:
+    """Allow only simple separators between year and month durations."""
+    return separator.strip().casefold() in ("", ",", "and", "&")
 
 
 def _skip_spaces(text: str, index: int) -> int:
@@ -117,6 +165,40 @@ def _redact_long_numbers(text: str) -> str:
     return "".join(parts)
 
 
+def _extract_tenure_months(query: str) -> int | None:
+    """Deposit tenure in months, ignoring ages; None when absent or ambiguous.
+
+    Every year/month expression is considered, not only the first, so an age
+    such as "65 years old" is skipped rather than read as the deposit period.
+    "1 year 6 months" is combined into 18. Two different remaining durations
+    are ambiguous and return None so the user is asked instead of guessed for.
+    """
+    durations: list[int] = []
+    previous_year_end = None
+    for match in _DURATION.finditer(query):
+        unit_match = _duration_unit_end(query, match.end())
+        if unit_match is None:
+            continue
+        unit, duration_end = unit_match
+        if _is_age_expression(query, match.start(), duration_end):
+            previous_year_end = None
+            continue
+        value = float(match.group("value"))
+        if unit.startswith("year"):
+            durations.append(int(value * 12))
+            previous_year_end = duration_end
+            continue
+        if previous_year_end is not None and _is_compound_join(
+            query[previous_year_end : match.start()]
+        ):
+            durations[-1] += int(value)
+        else:
+            durations.append(int(value))
+        previous_year_end = None
+    distinct = set(durations)
+    return distinct.pop() if len(distinct) == 1 else None
+
+
 def extract_requirements(query: str, use_gemini: bool = True) -> Requirements:
     """Redact user input, then extract only requirements stated explicitly."""
     return extract_requirements_from_safe_query(
@@ -152,13 +234,7 @@ def extract_requirements_from_safe_query(
             if scale.startswith("crore")
             else 1
         )
-    tenure = None
-    years = re.search(r"(\d{1,4}(?:\.\d{1,2})?)\s*years?", query, re.IGNORECASE)
-    months = re.search(r"(\d{1,4})\s*months?", query, re.IGNORECASE)
-    if years:
-        tenure = int(float(years.group(1)) * 12)
-    elif months:
-        tenure = int(months.group(1))
+    tenure = _extract_tenure_months(query)
     try:
         from google import genai
         from google.genai import types
