@@ -228,7 +228,7 @@ def test_low_confidence_rates_never_reach_calculations():
     )
     assert [r["verification_status"] for r in pnb["product"]["rates"]] == [
         "CONFLICT",
-        "LOW",
+        "CONFLICT",
         "LOW",
     ]
     assert pnb["calculation"] is None

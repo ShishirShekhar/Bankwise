@@ -66,6 +66,27 @@ export type AskResponse = {
     liquidity_need: string | null;
     missing: string[];
   };
+  best_if_withdrawn_early:
+    | {
+        status: "RANKED";
+        bank: string;
+        penalty_pp: number;
+        source_url: string;
+        ranking_basis: string;
+        payout_note: string;
+      }
+    | {
+        status: "TIE";
+        banks: string[];
+        penalty_pp: number;
+        ranking_basis: string;
+      }
+    | {
+        status: "INSUFFICIENT_DATA";
+        reason: string;
+        unranked_banks: string[];
+      }
+    | null;
   options: AskOption[];
   skipped: Array<{
     bank: string;

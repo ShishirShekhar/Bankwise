@@ -43,3 +43,25 @@ def test_conflicting_durations_ask_for_clarification():
     )
     assert requirements.duration_months is None
     assert "duration_months" in requirements.missing_information
+
+
+@pytest.mark.parametrize(
+    ("query", "amount", "months"),
+    [
+        ("10,00,000 for 6 months", 1000000, 6),
+        ("2.5L for 1.5 years", 250000, 18),
+        ("I want to invest 200000 for 5 years", 200000, 60),
+    ],
+)
+def test_extracts_common_indian_currency_formats(query, amount, months):
+    requirements = extract_requirements(query, use_gemini=False)
+    assert requirements.amount == amount
+    assert requirements.duration_months == months
+    assert requirements.missing_information == []
+
+
+@pytest.mark.parametrize("query", ["1,,00,000 for 6 months", "5 for 6 months"])
+def test_ambiguous_or_malformed_amounts_are_not_guessed(query):
+    requirements = extract_requirements(query, use_gemini=False)
+    assert requirements.amount is None
+    assert "amount" in requirements.missing_information

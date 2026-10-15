@@ -199,6 +199,38 @@ def _extract_tenure_months(query: str) -> int | None:
     return distinct.pop() if len(distinct) == 1 else None
 
 
+_AMOUNT_NUMBER = r"(?:\d{1,2}(?:,\d{2})*,\d{3}|\d+)(?:\.\d{1,4})?"
+_AMOUNT_SCALE = r"lakhs?|lacs?|crores?|l"
+_AMOUNT_CURRENCY = re.compile(r"(?:₹|rs\.?\s*|inr\s*)", re.IGNORECASE)
+_AMOUNT_TOKEN = re.compile(
+    rf"(?<![\w.,])(?P<number>{_AMOUNT_NUMBER})(?![\d,])\s*(?P<scale>{_AMOUNT_SCALE})?\b",
+    re.IGNORECASE,
+)
+_UNITLESS_AMOUNT_CONTEXT = re.compile(
+    r"\b(?:invest(?:ing|ment)?|deposit|put|save|amount|principal|rupees?|inr|rs\.?)\b",
+    re.IGNORECASE,
+)
+def _extract_amount_inr(query: str) -> float | None:
+    """Read an explicit INR amount, including Indian grouping and lakh shorthand."""
+    for match in _AMOUNT_TOKEN.finditer(query):
+        start = match.start()
+        prefix = query[:start]
+        currency_matches = list(_AMOUNT_CURRENCY.finditer(prefix))
+        has_currency = bool(currency_matches and not prefix[currency_matches[-1].end():].strip())
+        scale = (match.group("scale") or "").casefold()
+        if not scale and not has_currency and "," not in match.group("number"):
+            prior = query[max(0, start - 48):start]
+            if not _UNITLESS_AMOUNT_CONTEXT.search(prior):
+                continue
+        numeric = float(match.group("number").replace(",", ""))
+        if scale == "l" or scale.startswith(("lakh", "lac")):
+            numeric *= 100000
+        elif scale.startswith("crore"):
+            numeric *= 10000000
+        return numeric
+    return None
+
+
 def extract_requirements(query: str, use_gemini: bool = True) -> Requirements:
     """Redact user input, then extract only requirements stated explicitly."""
     return extract_requirements_from_safe_query(
@@ -210,30 +242,7 @@ def extract_requirements_from_safe_query(
     query: str, use_gemini: bool = True
 ) -> Requirements:
     """Extract requirements from input already passed through redaction."""
-    amount_match = re.search(
-        r"(?:(?:₹|rs\.?\s*|inr\s*)(?P<currency_amount>[\d,]{1,24}(?:\.\d{1,4})?)\s*(?P<currency_scale>lakhs?|lacs?|crores?)?"
-        r"|(?<![\w.])(?P<bare_amount>[\d,]{1,24}(?:\.\d{1,4})?)\s*(?P<bare_scale>lakhs?|lacs?|crores?)\b)",
-        query,
-        re.IGNORECASE,
-    )
-    amount = None
-    if amount_match:
-        raw_amount = amount_match.group("currency_amount") or amount_match.group(
-            "bare_amount"
-        )
-        scale = (
-            amount_match.group("currency_scale")
-            or amount_match.group("bare_scale")
-            or ""
-        ).lower()
-        amount = float(raw_amount.replace(",", ""))
-        amount *= (
-            100000
-            if scale.startswith(("lakh", "lac"))
-            else 10000000
-            if scale.startswith("crore")
-            else 1
-        )
+    amount = _extract_amount_inr(query)
     tenure = _extract_tenure_months(query)
     try:
         from google import genai

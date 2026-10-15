@@ -190,3 +190,81 @@ def test_ask_response_structured_layout_when_calculation_terms_are_missing():
     assert "2. The Key Trade-off ('What Am I Giving Up?'): Bank A yields more than Bank B." in result["explanation"]
     assert "3. Conditions & Transparency:" in result["explanation"]
     assert "compounding terms are missing" in result["explanation"]
+
+
+def _early_option(bank, penalty, source_url):
+    return {
+        "product": {
+            "bank": bank,
+            "name": "FD",
+            "rates": [{"annual_rate_percent": 6.0, "usable_for_calculation": True, "source_id": "s1"}],
+            "sources": [{"id": "s1", "verified_at": "2026-10-04", "freshness": "HIGH"}],
+            "conditions": [
+                {"type": "premature_withdrawal_allowed", "value": True, "verified": True},
+                {
+                    "type": "premature_withdrawal_penalty_percentage_points",
+                    "value": penalty,
+                    "verified": penalty is not None,
+                    "verification_status": "CONFLICT" if penalty is None else "HIGH",
+                    "source_url": source_url,
+                },
+                {
+                    "type": "premature_withdrawal_policy",
+                    "value": "Penalty applies to premature withdrawal.",
+                    "verified": True,
+                    "source_url": source_url,
+                },
+            ],
+        },
+        "eligible": True,
+        "calculation": {"maturity_amount": 110000, "interest_earned": 10000},
+    }
+
+
+def _early_result(comparisons):
+    return to_ask_response(
+        {
+            "requirements": {
+                "product_category": "FD",
+                "amount": 100000,
+                "duration_months": 24,
+                "liquidity_preference": "HIGH",
+                "premature_withdrawal_important": True,
+                "missing_information": [],
+            },
+            "comparisons": comparisons,
+            "tradeoff_summary": "Compare verified withdrawal terms.",
+            "warnings": [],
+        }
+    )
+
+
+def test_early_withdrawal_rank_uses_only_complete_verified_penalties():
+    result = _early_result(
+        [
+            _early_option("Bank A", 1.0, "https://bank.example/a"),
+            _early_option("Bank B", 0.5, "https://bank.example/b"),
+        ]
+    )
+
+    assert result["best_if_withdrawn_early"] == {
+        "status": "RANKED",
+        "bank": "Bank B",
+        "penalty_pp": 0.5,
+        "source_url": "https://bank.example/b",
+        "ranking_basis": "lowest verified premature-withdrawal penalty",
+        "payout_note": "A withdrawal date and actual holding-period rate are required to calculate an early-exit amount.",
+    }
+    assert "liquidity preference is high" in result["explanation"]
+
+
+def test_early_withdrawal_ranking_discloses_missing_or_conflicted_terms():
+    result = _early_result(
+        [
+            _early_option("Bank A", 0.5, "https://bank.example/a"),
+            _early_option("Bank B", None, "https://bank.example/b"),
+        ]
+    )
+
+    assert result["best_if_withdrawn_early"]["status"] == "INSUFFICIENT_DATA"
+    assert result["best_if_withdrawn_early"]["unranked_banks"] == ["Bank B"]
