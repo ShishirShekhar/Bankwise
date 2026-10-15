@@ -30,6 +30,43 @@ def _inr(value: float | None) -> str | None:
     return f"₹{grouped}"
 
 
+def _early_withdrawal_result(options: list[dict], requested: bool) -> dict | None:
+    """Compare only complete, verified withdrawal terms; never infer missing penalties."""
+    if not requested:
+        return None
+    unranked = [
+        option["bank"]
+        for option in options
+        if option.get("withdrawal_allowed") is not True
+        or option.get("penalty_pp") is None
+        or not option.get("penalty_source_url")
+    ]
+    if unranked or not options:
+        return {
+            "status": "INSUFFICIENT_DATA",
+            "reason": "Verified withdrawal permission and penalty data are not available for every compared product.",
+            "unranked_banks": unranked,
+        }
+    lowest_penalty = min(option["penalty_pp"] for option in options)
+    winners = [option for option in options if option["penalty_pp"] == lowest_penalty]
+    if len(winners) != 1:
+        return {
+            "status": "TIE",
+            "banks": [option["bank"] for option in winners],
+            "penalty_pp": lowest_penalty,
+            "ranking_basis": "lowest verified premature-withdrawal penalty",
+        }
+    winner = winners[0]
+    return {
+        "status": "RANKED",
+        "bank": winner["bank"],
+        "penalty_pp": lowest_penalty,
+        "source_url": winner["penalty_source_url"],
+        "ranking_basis": "lowest verified premature-withdrawal penalty",
+        "payout_note": "A withdrawal date and actual holding-period rate are required to calculate an early-exit amount.",
+    }
+
+
 def to_ask_response(result: dict) -> dict:
     requirements = result["requirements"]
     missing = requirements.get("missing_information", [])
@@ -139,6 +176,7 @@ def to_ask_response(result: dict) -> dict:
                 "early_exit_months": None,
                 "early_exit_amount": None,
                 "penalty_pp": penalty,
+                "withdrawal_allowed": withdrawal_allowed,
                 "lock_in_months": None,
                 "early_exit_note": early_note,
                 "rate": f"{rate['annual_rate_percent']:.2f}%",
@@ -197,7 +235,7 @@ def to_ask_response(result: dict) -> dict:
         top = options[0]
         amount_text = _inr(requirements.get("amount"))
         duration = requirements.get("duration_months")
-        liquidity = requirements.get("liquidity_need")
+        liquidity = requirements.get("liquidity_preference")
         decision = (
             f"For {amount_text} over {duration} months, {top['bank']} has the highest calculated maturity "
             f"among the currently verified options: {top['maturity']} ({top['rate']})."
@@ -250,7 +288,9 @@ def to_ask_response(result: dict) -> dict:
         },
         "options": options,
         "skipped": skipped,
-        "best_if_withdrawn_early": None,
+        "best_if_withdrawn_early": _early_withdrawal_result(
+            options, requirements.get("premature_withdrawal_important") is True
+        ),
         "explanation": explanation,
         "tradeoff_summary": result.get("tradeoff_summary"),
         "warnings": result.get("warnings", []),

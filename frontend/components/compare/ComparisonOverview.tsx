@@ -58,6 +58,54 @@ export function ComparisonOverview({ result }: { result: AskResponse }) {
           · {duration} · {liquidity}
         </p>
       </div>
+      {result.best_if_withdrawn_early && (
+        <section
+          className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 px-6 py-5"
+          aria-labelledby="early-withdrawal-heading"
+          role="status"
+        >
+          <h2 id="early-withdrawal-heading" className="font-semibold text-amber-950">
+            Early-withdrawal comparison
+          </h2>
+          {result.best_if_withdrawn_early.status === "RANKED" ? (
+            <>
+              <p className="mt-2 text-sm text-amber-950">
+                {result.best_if_withdrawn_early.bank} has the lowest verified premature-withdrawal
+                penalty among the compared products: {result.best_if_withdrawn_early.penalty_pp.toFixed(2)}
+                percentage points.
+              </p>
+              <p className="mt-1 text-sm text-amber-900">
+                {result.best_if_withdrawn_early.payout_note} Terms: {" "}
+                <a
+                  className="font-medium underline underline-offset-2"
+                  href={result.best_if_withdrawn_early.source_url}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  view verified source
+                </a>
+              </p>
+            </>
+          ) : result.best_if_withdrawn_early.status === "TIE" ? (
+            <p className="mt-2 text-sm text-amber-950">
+              {result.best_if_withdrawn_early.banks.join(", ")} tie for the lowest verified
+              premature-withdrawal penalty at {result.best_if_withdrawn_early.penalty_pp.toFixed(2)}
+              percentage points.
+            </p>
+          ) : (
+            <>
+              <p className="mt-2 text-sm text-amber-950">
+                {result.best_if_withdrawn_early.reason}
+              </p>
+              {result.best_if_withdrawn_early.unranked_banks.length > 0 && (
+                <p className="mt-1 text-sm text-amber-900">
+                  Terms needing verification: {result.best_if_withdrawn_early.unranked_banks.join(", ")}.
+                </p>
+              )}
+            </>
+          )}
+        </section>
+      )}
     </>
   );
 }
