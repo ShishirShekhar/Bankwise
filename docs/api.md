@@ -38,4 +38,6 @@ Calculation route failures: 404 for missing product, 409 for blocked/unverified 
 
 `POST /api/ask` returns `request_id`, `session_id`, parsed `requirements`, product payloads, per-product comparisons/calculations/tradeoffs, source list, warnings, `clarification_needed`, session persistence indicator and AI usage metadata. When amount or duration is absent it returns a clarification status and no fabricated comparison. If no verified rate is usable, products are excluded or blocked with reasons. The response's trade-off metrics and numbers are computed by the API; model prose does not replace them.
 
+When the request states that early withdrawal matters, `best_if_withdrawn_early` reports `RANKED` only when every compared option has verified withdrawal permission and a sourced numeric penalty. Otherwise it reports `INSUFFICIENT_DATA` with the unranked banks. A tie is reported explicitly. Ranking uses the lowest verified penalty; an early-exit amount is never calculated without a withdrawal date and holding-period rate.
+
 For exact fields, see Pydantic request models in [`backend/app/schemas.py`](../backend/app/schemas.py) and payload construction in `backend/app/ai/ask_response.py` and `backend/app/domain/catalog.py`.
