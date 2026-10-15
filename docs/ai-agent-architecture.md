@@ -3,7 +3,7 @@
 ## `/api/ask` execution order
 
 1. The authenticated, CSRF-protected, rate-limited API receives the request. `redact_sensitive_input()` runs before requirement parsing, RAG, or Google Search.
-2. The Requirement specialist extracts explicitly stated amount, duration, category, and liquidity preference with deterministic parsing. Missing amount or duration returns a clarification before retrieval.
+2. The Requirement specialist extracts explicitly stated amount, duration, category, and liquidity preference with deterministic parsing. Amount parsing accepts Indian comma grouping, lakh/lac/crore suffixes (including `L`), and ungrouped values stated with an investment context; malformed or context-free ungrouped values remain missing. Missing amount or duration returns a clarification before retrieval.
 3. The Research specialist reads active fixed-deposit products from the configured catalogue, then embeds a request-scoped retrieval query and calls BigQuery `VECTOR_SEARCH` over `bankwise_rag.source_chunks`. Retrieval filters to active, `HIGH` verified, fresh chunks. If there are no eligible chunks, it invokes Vertex AI Google Search grounding through `google-genai` and preserves grounding source URLs and retrieval time.
 4. The Verification specialist runs the existing `sources.py` checks and conflict rules against canonical catalogue facts. RAG and Search evidence remain evidence only.
 5. The Calculation specialist delegates to `compare_products`, rate selection, and the deterministic FD calculator. Only catalogue rates that pass verification can reach these functions.
