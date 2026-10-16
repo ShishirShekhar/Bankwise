@@ -299,7 +299,7 @@ jobs:
           export_environment_variables: true
 
       - name: Download static frontend build
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: bankwise-frontend-static
           path: frontend/out/
