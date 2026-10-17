@@ -54,8 +54,7 @@ function friendlyFirebaseError(error: unknown): Error {
       "An account already exists with this email. Sign in using its original method first.",
     "auth/unauthorized-domain":
       "This site is not authorized for Firebase sign-in. Add its domain in Firebase Authentication settings.",
-    "auth/operation-not-allowed":
-      "This sign-in method is disabled for the Firebase project.",
+    "auth/operation-not-allowed": "This sign-in method is disabled for the Firebase project.",
     "auth/invalid-api-key": "Firebase web configuration is invalid.",
     "auth/app-not-authorized": "This app is not authorized for Firebase sign-in.",
     "auth/invalid-oauth-client-id":
@@ -91,15 +90,11 @@ async function authenticate(operation: () => Promise<UserCredential>): Promise<v
 }
 
 export function signInWithEmail(email: string, password: string): Promise<void> {
-  return authenticate(() =>
-    signInWithEmailAndPassword(getFirebaseAuth(), email, password),
-  );
+  return authenticate(() => signInWithEmailAndPassword(getFirebaseAuth(), email, password));
 }
 
 export function signUpWithEmail(email: string, password: string): Promise<void> {
-  return authenticate(() =>
-    createUserWithEmailAndPassword(getFirebaseAuth(), email, password),
-  );
+  return authenticate(() => createUserWithEmailAndPassword(getFirebaseAuth(), email, password));
 }
 
 export function signInWithGoogle(): Promise<void> {

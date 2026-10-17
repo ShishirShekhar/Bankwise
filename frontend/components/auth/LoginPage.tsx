@@ -33,7 +33,9 @@ export function LoginPage() {
         await signInWithEmail(String(form.get("email")), String(form.get("password")));
       }
       if (!(await refreshUser())) {
-        throw new Error("Sign-in completed, but your session could not be confirmed. Please retry.");
+        throw new Error(
+          "Sign-in completed, but your session could not be confirmed. Please retry.",
+        );
       }
       await finishLogin();
     } catch (reason) {
@@ -64,12 +66,16 @@ export function LoginPage() {
     void signInWithGoogle()
       .then(async () => {
         if (!(await refreshUser())) {
-          throw new Error("Sign-in completed, but your session could not be confirmed. Please retry.");
+          throw new Error(
+            "Sign-in completed, but your session could not be confirmed. Please retry.",
+          );
         }
         await finishLogin();
       })
       .catch((reason: unknown) => {
-        setError(reason instanceof Error ? reason.message : "Google sign-in could not be completed.");
+        setError(
+          reason instanceof Error ? reason.message : "Google sign-in could not be completed.",
+        );
       })
       .finally(() => setLoading(false));
   }
@@ -88,16 +94,24 @@ export function LoginPage() {
                 {mode === "signup" ? "Create your account" : "Welcome back"}
               </h2>
               <p className="mt-2 text-gray-500">
-                {mode === "signup" ? "Sign up to continue to BankWise." : "Sign in to continue to BankWise."}
+                {mode === "signup"
+                  ? "Sign up to continue to BankWise."
+                  : "Sign in to continue to BankWise."}
               </p>
             </div>
-            <LoginForm onSubmit={(event) => void continueToBankwise(event)} loading={loading} mode={mode} />
+            <LoginForm
+              onSubmit={(event) => void continueToBankwise(event)}
+              loading={loading}
+              mode={mode}
+            />
             <button
               type="button"
               onClick={() => setMode(mode === "login" ? "signup" : "login")}
               className="mt-3 w-full text-sm font-medium text-blue-700 hover:text-blue-800"
             >
-              {mode === "login" ? "New to BankWise? Create an account" : "Already have an account? Sign in"}
+              {mode === "login"
+                ? "New to BankWise? Create an account"
+                : "Already have an account? Sign in"}
             </button>
             <div className="my-5 flex items-center gap-4">
               <div className="h-px flex-1 bg-gray-200" />
