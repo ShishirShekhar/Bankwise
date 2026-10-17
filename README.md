@@ -14,7 +14,6 @@ Bankwise is a fixed deposit (FD) comparison and decision-support application. It
 - [Financial calculations](docs/financial-calculations.md): supported formula and limitations.
 - [Verification system](docs/verification-system.md): source status, conflicts, and usability rules.
 - [Deployment instructions](docs/deployment.md): local run and current release workflow.
-- [AI Builder Cup submission readiness](docs/competition-submission-readiness.md): requirement audit, judge smoke test, and video outline.
 
 ## Run locally
 
@@ -41,6 +40,8 @@ npm run dev
 ```
 
 Set the Firebase values in `frontend/.env.local` before running `npm run dev` if you want to use browser sign-in.
+
+On the deployed Bankwise demo, sign in with **test@test.com** and password **test123**. These credentials work only with the Firebase project provisioned for the demo. Do not reuse this password for a personal account.
 
 Visit <http://localhost:3000>. Local backend mode uses `backend/data/fd-products.json` and in-memory sessions; it does not need Google Cloud credentials. Authentication still needs a configured Firebase project to complete the sign-in flow. The API can be exercised directly with a local auth session/token setup; see [deployment and local configuration](docs/deployment.md).
 
