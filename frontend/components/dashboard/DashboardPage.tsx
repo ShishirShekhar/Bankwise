@@ -7,6 +7,7 @@ import { WhyBankwise } from "@/components/dashboard/WhyBankwise";
 import { BankwiseQueryForm } from "@/components/shared/BankwiseQueryForm";
 import { useBankwiseQuery } from "@/hooks/use-bankwise-query";
 import { useRequireAuth } from "@/hooks/use-require-auth";
+import { FD_EXAMPLE_QUERIES } from "@/lib/bankwise";
 
 export function DashboardPage() {
   const checkingAuth = useRequireAuth("/dashboard");
@@ -25,6 +26,7 @@ export function DashboardPage() {
           onSubmit={runQuery}
           loading={loading}
           error={error}
+          examples={FD_EXAMPLE_QUERIES}
           rows={5}
           placeholder="For example: I have ₹5 lakh and want to invest for 2 years, but may need the money early."
           helperText="BankWise will understand your goal and preferences."

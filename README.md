@@ -41,6 +41,8 @@ npm run dev
 
 Set the Firebase values in `frontend/.env.local` before running `npm run dev` if you want to use browser sign-in.
 
+On the deployed Bankwise demo, sign in with **test@test.com** and password **test123**. These credentials work only with the Firebase project provisioned for the demo. Do not reuse this password for a personal account.
+
 Visit <http://localhost:3000>. Local backend mode uses `backend/data/fd-products.json` and in-memory sessions; it does not need Google Cloud credentials. Authentication still needs a configured Firebase project to complete the sign-in flow. The API can be exercised directly with a local auth session/token setup; see [deployment and local configuration](docs/deployment.md).
 
 The frontend expects `NEXT_PUBLIC_BANKWISE_API_URL=http://localhost:8080` for direct local API requests. The `.env.example` has this value. Do not commit `.env` or `.env.local`.
