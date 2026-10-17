@@ -59,11 +59,7 @@ export function getFirebaseAuth(): Auth {
       popupRedirectResolver: browserPopupRedirectResolver,
     });
   } catch (error) {
-    if (
-      error instanceof Error &&
-      "code" in error &&
-      error.code === "auth/already-initialized"
-    ) {
+    if (error instanceof Error && "code" in error && error.code === "auth/already-initialized") {
       authInstance = getAuth(app);
     } else {
       throw error;
