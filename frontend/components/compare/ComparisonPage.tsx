@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 
 import { ComparisonOverview } from "@/components/compare/ComparisonOverview";
 import { ComparisonWarnings } from "@/components/compare/ComparisonWarnings";
+import { AIExplanation } from "@/components/compare/AIExplanation";
 import { DecisionAnswer } from "@/components/compare/DecisionAnswer";
 import { NoComparison } from "@/components/compare/NoComparison";
 import { ProductResults } from "@/components/compare/ProductResults";
@@ -63,6 +64,7 @@ export function ComparisonPage() {
             ) : null}
             <SkippedProducts products={result.skipped} />
             <StructuredExplanation explanation={result.explanation} />
+            <AIExplanation ai={result.ai} />
             <ResearchEvidence research={result.research} />
             <ComparisonWarnings warnings={result.warnings} />
             <p className="mt-7 text-center text-xs leading-5 text-gray-500">
