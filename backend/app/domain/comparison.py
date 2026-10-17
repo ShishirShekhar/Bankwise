@@ -5,6 +5,14 @@ from app.domain.rates import calculate_product_fd, matching_rates
 from app.domain.sources import VerificationStatus, condition_verification
 
 
+def _bank_name(bank: str | dict | None) -> str:
+    """Return a plain bank name for human-readable comparison copy."""
+    if isinstance(bank, dict):
+        name = bank.get("name")
+        return name if isinstance(name, str) and name else "the other bank"
+    return bank if isinstance(bank, str) and bank else "the other bank"
+
+
 def _extract_penalty_pp(catalog, product_id: str, conditions: list[dict]) -> float | None:
     for cond in conditions:
         if cond.get("condition_type") == "premature_withdrawal_penalty_percentage_points":
@@ -59,7 +67,7 @@ def compare_products(catalog, product_ids: list, amount: float, tenure: int) -> 
         best_item = calculated_items[0]
         best_id = best_item["product"]["id"]
         best_amount = best_item["calculation"]["maturity_amount"]
-        best_bank = best_item["product"]["bank"]
+        best_bank = _bank_name(best_item["product"]["bank"])
         best_penalty = _extract_penalty_pp(
             catalog, best_id, best_item["product"].get("conditions", [])
         )
@@ -68,7 +76,7 @@ def compare_products(catalog, product_ids: list, amount: float, tenure: int) -> 
         second_amount = (
             second_item["calculation"]["maturity_amount"] if second_item else None
         )
-        second_bank = second_item["product"]["bank"] if second_item else None
+        second_bank = _bank_name(second_item["product"]["bank"]) if second_item else None
         second_penalty = (
             _extract_penalty_pp(
                 catalog,
@@ -108,7 +116,7 @@ def compare_products(catalog, product_ids: list, amount: float, tenure: int) -> 
             give_ups = []
 
             if is_best:
-                if second_item and second_amount is not None:
+                if second_item and second_amount is not None and best_amount > second_amount:
                     lead = round(best_amount - second_amount, 2)
                     gains.append(
                         f"+₹{lead:,.2f} higher calculated maturity vs {second_bank}"
@@ -128,7 +136,10 @@ def compare_products(catalog, product_ids: list, amount: float, tenure: int) -> 
                 else:
                     give_ups.append("No higher verified penalty was identified")
             else:
-                give_ups.append(f"-₹{diff:,.2f} lower calculated maturity vs {best_bank}")
+                if diff > 0:
+                    give_ups.append(f"₹{diff:,.2f} lower calculated maturity vs {best_bank}")
+                else:
+                    give_ups.append(f"Calculated maturity matches {best_bank}")
                 if (
                     penalty is not None
                     and best_penalty is not None
@@ -149,7 +160,12 @@ def compare_products(catalog, product_ids: list, amount: float, tenure: int) -> 
 
         if second_item and second_amount is not None:
             lead = round(best_amount - second_amount, 2)
-            if (
+            if lead == 0:
+                tradeoff_summary = (
+                    f"{best_bank} and {second_bank} have the same calculated maturity "
+                    f"of ₹{best_amount:,.2f} over {tenure} months."
+                )
+            elif (
                 second_penalty is not None
                 and best_penalty is not None
                 and second_penalty < best_penalty
