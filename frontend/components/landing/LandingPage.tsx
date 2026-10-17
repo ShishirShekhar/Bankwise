@@ -7,9 +7,7 @@ import { BankwiseQueryForm } from "@/components/shared/BankwiseQueryForm";
 import { SiteHeader } from "@/components/shared/SiteHeader";
 import { TrustHighlights } from "@/components/shared/TrustHighlights";
 import { useBankwiseQuery } from "@/hooks/use-bankwise-query";
-import { redactSensitiveInput } from "@/lib/bankwise";
-
-const exampleQueries = ["₹5 lakh for 2 years with early withdrawal", "₹2 lakh for 1 year"];
+import { FD_EXAMPLE_QUERIES, redactSensitiveInput } from "@/lib/bankwise";
 
 export function LandingPage() {
   const { runQuery, loading, error } = useBankwiseQuery();
@@ -35,7 +33,7 @@ export function LandingPage() {
           onSubmit={submitQuery}
           loading={loading}
           error={error}
-          examples={exampleQueries}
+          examples={FD_EXAMPLE_QUERIES}
         />
         <TrustHighlights />
         <p className="mt-10 text-center text-xs leading-5 text-gray-500">
