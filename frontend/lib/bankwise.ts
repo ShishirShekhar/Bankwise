@@ -1,5 +1,11 @@
 import { apiFetch } from "@/lib/api-client";
 
+export const FD_EXAMPLE_QUERIES = [
+  "₹5 lakh for 2 years with early withdrawal",
+  "₹2 lakh for 1 year",
+  "₹10 lakh for 3 years",
+];
+
 export type Source = {
   id?: string;
   type?: string;

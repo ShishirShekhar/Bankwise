@@ -8,7 +8,8 @@ import { ClientErrorReporter } from "@/components/shared/ClientErrorReporter";
 
 export const metadata: Metadata = {
   title: "BankWise | Compare fixed deposits with confidence",
-  description: "Compare verified fixed deposit rates, maturity estimates, and withdrawal trade-offs.",
+  description:
+    "Compare verified fixed deposit rates, maturity estimates, and withdrawal trade-offs.",
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
