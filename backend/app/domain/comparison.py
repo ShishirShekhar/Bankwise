@@ -116,7 +116,11 @@ def compare_products(catalog, product_ids: list, amount: float, tenure: int) -> 
             give_ups = []
 
             if is_best:
-                if second_item and second_amount is not None and best_amount > second_amount:
+                if (
+                    second_item
+                    and second_amount is not None
+                    and round(best_amount - second_amount, 2) > 0
+                ):
                     lead = round(best_amount - second_amount, 2)
                     gains.append(
                         f"+₹{lead:,.2f} higher calculated maturity vs {second_bank}"
