@@ -4,11 +4,7 @@ import type { ReactNode } from "react";
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 
 import type { AuthUser } from "@/lib/auth";
-import {
-  AuthenticationRequiredError,
-  getCurrentUser,
-  logout as logoutRequest,
-} from "@/lib/auth";
+import { AuthenticationRequiredError, getCurrentUser, logout as logoutRequest } from "@/lib/auth";
 
 type AuthContextValue = {
   user: AuthUser | null;
