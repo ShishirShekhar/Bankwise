@@ -8,6 +8,7 @@ This page maps the supplied Ask the Expert checklist to the repository. It disti
 
 | Requirement | Repository evidence | Status / action |
 |---|---|---|
+| Team eligibility | Not verifiable in source code | Each team member should confirm the host's professional-only eligibility requirement. Check the official program rules for team composition and any travel or sponsorship terms. |
 | Deployed judge-accessible prototype on Cloud Run or Firebase Hosting | `.github/workflows/deploy-production.yaml`, `firebase.json`, and [deployment guide](deployment.md) | Deployment path is configured. Live reachability could not be verified from this environment; open both deployed URLs and complete a comparison before submission. |
 | Meaningful Gemini use | Vertex AI Search grounding in `backend/app/ai/research.py`; optional Google ADK explanation in `backend/app/ai/orchestrator.py` | Implemented. The comparison UI now displays accepted Gemini prose separately and reports when it is unavailable. Production config enables ADK explanation. Confirm the deployed response reports `ai.status=generated` for a representative request. |
 | Correct, deterministic FD calculations | `backend/app/calculators/fd.py` and `backend/tests/test_fd_calculator.py` | Implemented with unit tests; results are explicitly estimates where bank-specific day-count rules are unsupported. |
@@ -15,7 +16,7 @@ This page maps the supplied Ask the Expert checklist to the repository. It disti
 | End-to-end request flow | `/api/ask`, `backend/tests/test_decision_workflow.py`, `backend/tests/test_agent_evals.py`, and `backend/evals/bankwise_agent/` | Implemented with offline acceptance cases. Run the complete flow against the deployed services before submission. |
 | Deployment, database, authentication, and APIs remain available | Production workflow provisions Cloud Run and Firebase Hosting; production uses BigQuery and Firestore | Infrastructure configuration exists. Availability and IAM/API configuration require a live smoke check and periodic checks during evaluation. |
 | Pitch deck, 3–4 minute video, and project description | Not present in this repository | Prepare and submit these separately. A concise video outline is below. |
-| Accessible GitHub repository | Git remote is configured for `ShishirShekhar/Bankwise` | Confirm repository visibility or grant judge access; no access assumptions should be made from the local checkout. |
+| Accessible GitHub repository | Git remote is configured for `ShishirShekhar/Bankwise` | Confirm repository visibility or grant judge access; no access assumptions should be made from the local checkout. GitHub also reported two Dependabot alerts (one high and one low) during the branch push; review them in the repository's Security tab. |
 | Secrets protected | `.gitignore`, GitHub Actions Workload Identity Federation, Secret Manager release configuration | Design is configured. Review tracked files and GitHub variables/secrets before publishing; never place credentials in the repository or demo recording. |
 | Sample questions and expected behavior | This page and `backend/evals/bankwise_agent/bankwise_agent.eval.json` | Added below for consistent judge testing. |
 
