@@ -3,9 +3,9 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
+import { AIExplanation } from "@/components/compare/AIExplanation";
 import { ComparisonOverview } from "@/components/compare/ComparisonOverview";
 import { ComparisonWarnings } from "@/components/compare/ComparisonWarnings";
-import { AIExplanation } from "@/components/compare/AIExplanation";
 import { DecisionAnswer } from "@/components/compare/DecisionAnswer";
 import { NoComparison } from "@/components/compare/NoComparison";
 import { ProductResults } from "@/components/compare/ProductResults";
