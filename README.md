@@ -14,6 +14,7 @@ Bankwise is a fixed deposit (FD) comparison and decision-support application. It
 - [Financial calculations](docs/financial-calculations.md): supported formula and limitations.
 - [Verification system](docs/verification-system.md): source status, conflicts, and usability rules.
 - [Deployment instructions](docs/deployment.md): local run and current release workflow.
+- [AI Builder Cup submission readiness](docs/competition-submission-readiness.md): requirement audit, judge smoke test, and video outline.
 
 ## Run locally
 
