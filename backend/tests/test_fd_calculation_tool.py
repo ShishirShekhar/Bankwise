@@ -23,15 +23,26 @@ def test_adk_tool_schema_exposes_typed_required_inputs():
 
     declaration = FunctionTool(calculate_fd_tool)._get_declaration()
     schema = declaration.parameters
+    if schema is None:
+        schema = declaration.parameters_json_schema
+
+    properties = (
+        schema["properties"] if isinstance(schema, dict) else schema.properties
+    )
+    property_types = {}
+    for name, prop in properties.items():
+        property_type = prop.get("type") if isinstance(prop, dict) else prop.type.value
+        property_types[name] = property_type.upper()
+    required = schema.get("required", []) if isinstance(schema, dict) else schema.required
 
     assert declaration.name == "calculate_fd_tool"
     assert "never do the" in declaration.description
-    assert {name: prop.type.value for name, prop in schema.properties.items()} == {
+    assert property_types == {
         "product_id": "STRING",
         "principal": "NUMBER",
         "tenure_months": "INTEGER",
     }
-    assert sorted(schema.required) == ["principal", "product_id", "tenure_months"]
+    assert sorted(required) == ["principal", "product_id", "tenure_months"]
 
 
 def test_tool_returns_calculator_output_unchanged_with_version():
