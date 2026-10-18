@@ -1,4 +1,4 @@
-import app.domain.comparison as comparison
+from app.domain import comparison
 from app.domain.comparison import compare_products
 from app.repositories.local_json import LocalJsonCatalog
 
